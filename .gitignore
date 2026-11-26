@@ -1,0 +1,7 @@
+# Локальные файлы правил AI-инструментов
+COMMON_RULES.md
+.agents/rules/project-rules.md
+
+# Системные и временные файлы
+.DS_Store
+.env
