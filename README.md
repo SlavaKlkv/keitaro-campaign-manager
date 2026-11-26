@@ -8,7 +8,7 @@
 
 ## Стек
 
-- **Backend:** Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, `httpx`, `pydantic-settings`
+- **Backend:** Python 3.14, FastAPI, SQLAlchemy 2.x, Alembic, `httpx`, `pydantic-settings`
 - **База данных:** PostgreSQL 16 (`psycopg`) — журнал операций `operation_logs`
 - **Frontend:** React 18, TypeScript, Vite (монохромный UI с тёмной/светлой/системной темой и SVG-логотипом)
 - **Инфраструктура:** Docker Compose (`postgres`, `backend`, `frontend` на Nginx)

@@ -1,4 +1,4 @@
-"""Запись демо-скриншота/видео работы Keitaro Campaign Manager в docs/assets/demo.mp4.
+"""Запись демо-ролика работы Keitaro Campaign Manager в docs/assets/demo.mp4.
 
 Сценарий проигрывает живой пользовательский поток в браузере (1280x800):
 1. Переключение тем (тёмная → светлая → системная) как в эталоне ai_operations_agent.
@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import subprocess
@@ -29,7 +28,7 @@ API_URL = "http://localhost:8000"
 
 VIEWPORT = {"width": 1280, "height": 800}
 
-# Векторный курсор поверх страницы (страница пишется без системного курсора ОС)
+# Векторный курсор поверх страницы (записывается страница без системного курсора ОС)
 CURSOR_INIT_JS = """
 (() => {
   const initCursor = () => {
@@ -65,8 +64,14 @@ CURSOR_INIT_JS = """
 """
 
 
-def move_and_click(page: Page, locator: Locator, pause_after: float = 0.25) -> None:
-    """Плавно подводит курсор к элементу, нажимает на него и делает короткую паузу."""
+def move_and_click(
+    page: Page,
+    locator: Locator,
+    *,
+    move_steps: int = 14,
+    pause_after: float = 0.35,
+) -> None:
+    """Плавно подводит курсор к элементу, нажимает на него и делает читаемую паузу."""
     locator.scroll_into_view_if_needed()
     box = locator.bounding_box()
     if box is None:
@@ -74,19 +79,27 @@ def move_and_click(page: Page, locator: Locator, pause_after: float = 0.25) -> N
     else:
         target_x = box["x"] + box["width"] / 2
         target_y = box["y"] + box["height"] / 2
-        page.mouse.move(target_x, target_y, steps=12)
-        time.sleep(0.12)
+        page.mouse.move(target_x, target_y, steps=move_steps)
+        time.sleep(0.14)
         page.mouse.click(target_x, target_y)
     if pause_after > 0:
         time.sleep(pause_after)
 
 
-def type_human(page: Page, locator: Locator, text: str, delay_ms: int = 35) -> None:
-    """Кликает по полю, очищает его и вводит текст с живой скоростью."""
+def type_human(
+    page: Page,
+    locator: Locator,
+    text: str,
+    *,
+    delay_ms: int = 45,
+    pause_after: float = 0.25,
+) -> None:
+    """Кликает по полю, выделяет текущее значение и набирает текст без лишних нулей."""
     move_and_click(page, locator, pause_after=0.1)
-    locator.fill("")
+    locator.press("ControlOrMeta+a")
     locator.press_sequentially(text, delay=delay_ms)
-    time.sleep(0.2)
+    if pause_after > 0:
+        time.sleep(pause_after)
 
 
 def cleanup_campaign(campaign_id: int) -> None:
@@ -142,12 +155,11 @@ def main() -> None:
             context.add_init_script(CURSOR_INIT_JS)
             page = context.new_page()
 
-            # 1. Загрузка интерфейса и знакомство с переключателем тем
+            # 1. Вступление: тёмная (1.0s) → светлая (1.0s) → системная (0.6s)
             page.goto(BASE_URL, wait_until="networkidle")
             page.get_by_text("API: ok · БД: ok").wait_for(timeout=15000)
-            # Ждём, пока кнопка Create campaign станет активной (справочники загружены)
             page.locator('button[type="submit"]:not(:disabled)').wait_for(timeout=20000)
-            page.mouse.move(640, 360, steps=8)
+            page.mouse.move(640, 340, steps=10)
             time.sleep(1.0)
 
             move_and_click(
@@ -162,32 +174,34 @@ def main() -> None:
             )
 
             # 2. Создаватор кампаний
-            type_human(page, page.locator("#cmp-name"), "Demo AU Campaign")
+            type_human(page, page.locator("#cmp-name"), "Demo AU Campaign", delay_ms=45)
             move_and_click(
                 page,
                 page.locator(".geo-chips button", has_text="AU"),
-                pause_after=0.25,
+                pause_after=0.3,
             )
 
             offer_input = page.locator("#cmp-offer")
-            type_human(page, offer_input, "18001", delay_ms=55)
+            type_human(page, offer_input, "18001", delay_ms=65, pause_after=0.35)
             page.locator(".autocomplete-list .autocomplete-item").first.wait_for(timeout=10000)
             move_and_click(
                 page,
                 page.locator(".autocomplete-list .autocomplete-item").first,
-                pause_after=0.35,
+                pause_after=0.45,
             )
 
-            create_btn = page.get_by_role("button", name="Create campaign")
-            move_and_click(page, create_btn, pause_after=0.2)
+            move_and_click(
+                page,
+                page.get_by_role("button", name="Create campaign"),
+                pause_after=0.2,
+            )
 
             result_heading = page.locator(".result-card h2")
             result_heading.wait_for(timeout=25000)
-            heading_text = result_heading.inner_text()
-            match = re.search(r"#(\d+)", heading_text)
+            match = re.search(r"#(\d+)", result_heading.inner_text())
             if match:
                 created_campaign_id = int(match.group(1))
-            time.sleep(1.1)
+            time.sleep(1.0)
 
             move_and_click(
                 page,
@@ -195,61 +209,65 @@ def main() -> None:
                 pause_after=0.4,
             )
 
-            # 3. Редактор кампании: ждём загрузки потоков
+            # 3. Редактор кампании: ждём загрузки потоков (Flow 1 + Flow 2)
             page.get_by_text("Stream: Офферы").wait_for(timeout=20000)
             time.sleep(0.8)
 
-            # Добавляем 4 оффера (в итоге 5 активных по 20%)
+            # Добавляем 3 оффера (50/50 → 34/33/33 → 25×4)
             add_input = page.locator('input[aria-label="Поиск оффера для добавления в поток"]')
             add_btn = page.get_by_role("button", name="ADD", exact=True)
-            for offer_code in ("18002", "18003", "18004", "18005"):
-                type_human(page, add_input, offer_code, delay_ms=45)
+            for offer_code in ("18002", "18003", "18004"):
+                type_human(page, add_input, offer_code, delay_ms=45, pause_after=0.2)
                 page.locator(".autocomplete-list .autocomplete-item").first.wait_for(timeout=5000)
                 move_and_click(
                     page,
                     page.locator(".autocomplete-list .autocomplete-item").first,
+                    move_steps=12,
                     pause_after=0.15,
                 )
-                move_and_click(page, add_btn, pause_after=0.35)
+                move_and_click(page, add_btn, move_steps=12, pause_after=0.4)
 
+            time.sleep(0.5)
+
+            # Отправляем 4 оффера (25% каждый) в Keitaro
+            move_and_click(page, page.get_by_role("button", name="PUSH TO KT"), pause_after=0.15)
+            page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
             time.sleep(0.7)
 
-            # Отправляем 5 офферов (20% каждый) в Keitaro
-            push_btn = page.get_by_role("button", name="PUSH TO KT")
-            move_and_click(page, push_btn, pause_after=0.2)
-            page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
-            time.sleep(0.8)
+            # Удаляем один оффер → 34% / 33% / 33% + 0% (removed) с BRING BACK
+            move_and_click(
+                page,
+                page.get_by_role("button", name="REMOVE", exact=True).nth(3),
+                pause_after=0.7,
+            )
 
-            # Удаляем два оффера → 34% / 33% / 33%, удалённые 0% + (removed) + BRING BACK
-            remove_buttons = page.get_by_role("button", name="REMOVE", exact=True)
-            move_and_click(page, remove_buttons.nth(4), pause_after=0.4)
-            move_and_click(page, remove_buttons.nth(3), pause_after=0.7)
-
-            # Проверяем переключатель SHOW ALL OFFERS (скрыть и снова показать удалённые)
+            # Переключатель SHOW ALL OFFERS (скрываем удалённый, затем возвращаем показ)
             show_all_label = page.locator("label.checkbox-pill")
             move_and_click(page, show_all_label, pause_after=0.6)
             move_and_click(page, show_all_label, pause_after=0.6)
 
-            # Восстанавливаем через BRING BACK и снова убираем для сценария Pin 25%
-            bring_back_btns = page.get_by_role("button", name="BRING BACK", exact=True)
-            move_and_click(page, bring_back_btns.first, pause_after=0.6)
+            # BRING BACK + повторный REMOVE для показа восстановления и пересчёта
             move_and_click(
-                page.page if False else page,
+                page,
+                page.get_by_role("button", name="BRING BACK", exact=True).first,
+                pause_after=0.6,
+            )
+            move_and_click(
+                page,
                 page.get_by_role("button", name="REMOVE", exact=True).nth(3),
                 pause_after=0.6,
             )
 
-            # Закрепляем долю 3-го активного оффера на 25% → первые два становятся 38% и 37%
+            # Pin / ручное редактирование Share: 25% → активные пересчитываются в 38% и 37%
             share_inputs = page.locator("input.share-input:not(:disabled)")
-            type_human(page, share_inputs.nth(2), "25", delay_ms=60)
-            time.sleep(0.8)
+            type_human(page, share_inputs.nth(2), "25", delay_ms=75, pause_after=0.8)
 
-            # Пушим 38% / 37% / 25% в Keitaro
-            move_and_click(page, page.get_by_role("button", name="PUSH TO KT"), pause_after=0.2)
+            # PUSH TO KT (38% / 37% / 25%)
+            move_and_click(page, page.get_by_role("button", name="PUSH TO KT"), pause_after=0.15)
             page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
-            time.sleep(0.8)
+            time.sleep(0.7)
 
-            # Демонстрация CANCEL (откат черновика) и FETCH STREAMS FROM KT
+            # CANCEL (откат черновика) и FETCH STREAMS FROM KT
             move_and_click(
                 page,
                 page.get_by_role("button", name="REMOVE", exact=True).nth(2),
@@ -263,17 +281,17 @@ def main() -> None:
             move_and_click(
                 page,
                 page.get_by_role("button", name="FETCH STREAMS FROM KT"),
-                pause_after=0.9,
+                pause_after=0.7,
             )
 
-            # 4. Переходим в Журнал операций
+            # 4. Журнал операций из PostgreSQL
             move_and_click(
                 page,
                 page.locator("nav.nav-tabs button", has_text="Журнал"),
                 pause_after=0.4,
             )
             page.locator(".data-table tbody tr").first.wait_for(timeout=10000)
-            time.sleep(1.4)
+            time.sleep(1.2)
 
             video = page.video
             context.close()
