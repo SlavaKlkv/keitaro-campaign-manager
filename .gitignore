@@ -1,7 +1,28 @@
-# Локальные файлы правил AI-инструментов
+# Локальные файлы AI-инструментов
 COMMON_RULES.md
+CODEX.md
 .agents/rules/project-rules.md
+.github/copilot-instructions.md
 
 # Системные и временные файлы
 .DS_Store
 .env
+
+# Артефакты ТЗ и локальный роадмап
+docs/tz/
+ROADMAP.md
+
+# Python и тесты
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Frontend / Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo

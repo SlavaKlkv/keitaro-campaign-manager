@@ -1,0 +1,228 @@
+/* Семантические токены монохромной палитры: тёмная база в :root, светлая в :root[data-theme="light"] */
+:root {
+  color-scheme: dark;
+  --bg: #0a0b0d;
+  --panel: #111317;
+  --panel-2: #17191e;
+  --input-bg: #0d0f12;
+  --line: #272a31;
+  --line-soft: #202329;
+  --line-hover: #3e434d;
+  --text: #f3f4f6;
+  --text-2: #c7cad0;
+  --muted: #8e939e;
+  --faint: #7f848f;
+  --accent: #f3f4f6;
+  --on-accent: #0a0b0d;
+  --accent-soft: #1d2026;
+  --success: #4ade80;
+  --success-bg: #112218;
+  --success-line: #235334;
+  --success-text: #bbf7d0;
+  --warning: #fbbf24;
+  --warning-bg: #1f1a0d;
+  --warning-line: #574417;
+  --warning-text: #fde68a;
+  --danger: #f87171;
+  --danger-bg: #221214;
+  --danger-line: #6b292e;
+  --danger-text: #fecaca;
+  --focus-ring: #e5e7eb;
+  --shadow-card: 0 12px 36px rgba(0, 0, 0, 0.28);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f5f4;
+  --panel: #ffffff;
+  --panel-2: #efefed;
+  --input-bg: #ffffff;
+  --line: #dcdcda;
+  --line-soft: #e7e7e5;
+  --line-hover: #b8b8b4;
+  --text: #16181a;
+  --text-2: #3d3f3f;
+  --muted: #5c5c5b;
+  --faint: #70706f;
+  --accent: #16181a;
+  --on-accent: #ffffff;
+  --accent-soft: #e6e6e3;
+  --success: #15803d;
+  --success-bg: #ecfdf3;
+  --success-line: #a7f3c9;
+  --success-text: #166534;
+  --warning: #b45309;
+  --warning-bg: #fef7e6;
+  --warning-line: #f3d796;
+  --warning-text: #854d0e;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-line: #fecaca;
+  --danger-text: #991b1b;
+  --focus-ring: #16181a;
+  --shadow-card: 0 10px 28px rgba(15, 15, 15, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button:not(:disabled),
+select:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-text small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.topbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.theme-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.theme-option:hover {
+  color: var(--text);
+}
+
+.theme-option[aria-pressed="true"] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.theme-option svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-option svg .theme-solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+.health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.health-dot.ok {
+  background: var(--success);
+}
+
+.health-dot.err {
+  background: var(--danger);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
