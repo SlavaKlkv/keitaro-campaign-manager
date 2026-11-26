@@ -4,7 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.routers.campaigns import router as campaigns_router
 from app.routers.health import router as health_router
+from app.routers.logs import router as logs_router
+from app.routers.meta import router as meta_router
 
 
 def create_app() -> FastAPI:
@@ -25,6 +28,9 @@ def create_app() -> FastAPI:
     )
 
     application.include_router(health_router)
+    application.include_router(meta_router)
+    application.include_router(campaigns_router)
+    application.include_router(logs_router)
     return application
 
 
