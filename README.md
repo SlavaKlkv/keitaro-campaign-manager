@@ -2,6 +2,10 @@
 
 Веб-сервис для быстрого создания рекламных кампаний и управления потоками/офферами в трекере **Keitaro** через Admin API v1.
 
+## Демо
+
+- [Демо-запись работы интерфейса (`docs/assets/demo.mp4`)](docs/assets/demo.mp4) — переключение тем (тёмная/светлая/системная), создаватор кампаний (`Name`, `Geo`, автокомплит `Offer`), редактор потоков (`ADD`, `PUSH TO KT`, `REMOVE`, `SHOW ALL OFFERS`, `BRING BACK`, `Pin` / пересчёт долей `38% / 37% / 25%`, `CANCEL`, `FETCH STREAMS FROM KT`) и журнал операций в PostgreSQL.
+
 ## Стек
 
 - **Backend:** Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, `httpx`, `pydantic-settings`
