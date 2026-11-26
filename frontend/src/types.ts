@@ -54,11 +54,9 @@ export interface CampaignSummary {
   group?: string | null;
   traffic_source_id?: number | null;
   type?: string | null;
-  cost_type?: string | NoneType;
+  cost_type?: string | null;
   keitaro_url: string;
 }
-
-type NoneType = null;
 
 export interface CampaignCreatePayload {
   name: string;
@@ -86,14 +84,13 @@ export interface CampaignCreateResponse {
 
 export interface StreamOfferItem {
   offer_id: number;
-  name: string;
+  name?: string | null;
   share: number;
   state: string;
-  country: string[];
 }
 
 export interface StreamFilterItem {
-  name: string;
+  name?: string;
   mode?: string | null;
   payload?: unknown;
 }
@@ -104,7 +101,6 @@ export interface StreamInfo {
   name: string;
   type?: string | null;
   position?: number | null;
-  weight?: number | null;
   schema?: string | null;
   action_type?: string | null;
   action_payload?: string | null;
@@ -114,20 +110,21 @@ export interface StreamInfo {
 }
 
 export interface CampaignStreamsResponse {
-  campaign: CampaignSummary;
+  campaign_id: number;
+  campaign_name?: string | null;
+  keitaro_url: string;
   streams: StreamInfo[];
 }
 
 export interface StreamOfferShareInput {
   offer_id: number;
   share: number;
-  state: "active" | "disabled";
 }
 
 export interface UpdateStreamOffersResponse {
   campaign_id: number;
   stream_id: number;
-  offers: StreamOfferShareInput[];
+  offers: StreamOfferItem[];
   updated: boolean;
 }
 

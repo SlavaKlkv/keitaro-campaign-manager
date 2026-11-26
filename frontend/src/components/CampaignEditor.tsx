@@ -42,7 +42,7 @@ function formatFilters(filters: StreamFilterItem[]): string {
         : f.payload
           ? String(f.payload)
           : "";
-      return `${f.name} (${f.mode || "accept"}): ${vals || "—"}`;
+      return `${f.name || "filter"} (${f.mode || "accept"}): ${vals || "—"}`;
     })
     .join(" · ");
 }
@@ -54,11 +54,11 @@ function toDraftOffers(
   const serverIds = new Set(stream.offers.map((o) => o.offer_id));
   const current: DraftOffer[] = stream.offers.map((o) => ({
     offer_id: o.offer_id,
-    name: o.name,
+    name: o.name || `Offer #${o.offer_id}`,
     share: o.share,
     pinned: false,
     removed: o.state !== "active",
-    country: o.country ?? [],
+    country: [],
   }));
 
   // Сохраняем ранее известные офферы, исчезнувшие из Keitaro, как (removed) для возможности BRING BACK
@@ -109,7 +109,9 @@ export function CampaignEditor({
       });
     } catch (err) {
       setStreamsError(
-        err instanceof Error ? err.message : "Не удалось загрузить список кампаний"
+        err instanceof Error
+          ? err.message
+          : "Не удалось загрузить список кампаний"
       );
     } finally {
       setCampaignsLoading(false);
@@ -153,7 +155,9 @@ export function CampaignEditor({
       });
     } catch (err) {
       setStreamsError(
-        err instanceof Error ? err.message : "Не удалось загрузить потоки из Keitaro"
+        err instanceof Error
+          ? err.message
+          : "Не удалось загрузить потоки из Keitaro"
       );
     } finally {
       setStreamsLoading(false);
@@ -179,7 +183,10 @@ export function CampaignEditor({
 
   const updateStreamDraft = (
     streamId: number,
-    updater: (prevDraft: DraftOffer[], prevState: StreamState) => {
+    updater: (
+      prevDraft: DraftOffer[],
+      prevState: StreamState
+    ) => {
       offers: DraftOffer[];
       extra?: Partial<StreamState>;
       recalculate?: boolean;
@@ -188,7 +195,10 @@ export function CampaignEditor({
     setStreamStates((prev) => {
       const current = prev[streamId];
       if (!current) return prev;
-      const { offers, extra, recalculate = true } = updater(current.draft, current);
+      const { offers, extra, recalculate = true } = updater(
+        current.draft,
+        current
+      );
       const calc = recalculate
         ? recalculateDraftShares(offers)
         : { offers, error: null };
@@ -214,8 +224,13 @@ export function CampaignEditor({
     }));
   };
 
-  const handleShareChange = (streamId: number, offerId: number, raw: string) => {
-    const parsed = raw === "" ? 0 : Math.max(0, Math.min(100, Math.trunc(Number(raw))));
+  const handleShareChange = (
+    streamId: number,
+    offerId: number,
+    raw: string
+  ) => {
+    const parsed =
+      raw === "" ? 0 : Math.max(0, Math.min(100, Math.trunc(Number(raw))));
     updateStreamDraft(streamId, (draft) => ({
       offers: draft.map((o) =>
         o.offer_id === offerId
@@ -238,9 +253,7 @@ export function CampaignEditor({
   const handleBringBackOffer = (streamId: number, offerId: number) => {
     updateStreamDraft(streamId, (draft) => ({
       offers: draft.map((o) =>
-        o.offer_id === offerId
-          ? { ...o, removed: false, pinned: false }
-          : o
+        o.offer_id === offerId ? { ...o, removed: false, pinned: false } : o
       ),
     }));
   };
@@ -321,7 +334,6 @@ export function CampaignEditor({
         activeOffers.map((o) => ({
           offer_id: o.offer_id,
           share: o.share,
-          state: "active",
         }))
       );
       setStreamStates((prev) => {
@@ -365,8 +377,9 @@ export function CampaignEditor({
             <p className="eyebrow">Часть 2 · Редактор кампании</p>
             <h1 className="page-title">Управление потоками и долями офферов</h1>
             <p className="muted-copy">
-              Изменяйте состав и доли офферов в черновике с мгновенным пересчётом до 100%,
-              затем отправляйте изменения через <code>PUSH TO KT</code>.
+              Изменяйте состав и доли офферов в черновике с мгновенным
+              пересчётом до 100%, затем отправляйте изменения через{" "}
+              <code>PUSH TO KT</code>.
             </p>
           </div>
           <div className="btn-row">
@@ -380,10 +393,10 @@ export function CampaignEditor({
             >
               {streamsLoading ? "Загрузка…" : "FETCH STREAMS FROM KT"}
             </button>
-            {streamsData?.campaign.keitaro_url && (
+            {streamsData?.keitaro_url && (
               <a
                 className="btn btn-secondary"
-                href={streamsData.campaign.keitaro_url}
+                href={streamsData.keitaro_url}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -412,12 +425,16 @@ export function CampaignEditor({
               disabled={campaignsLoading || filteredCampaigns.length === 0}
               value={selectedCampaignId ?? ""}
               onChange={(e) =>
-                setSelectedCampaignId(e.target.value ? Number(e.target.value) : null)
+                setSelectedCampaignId(
+                  e.target.value ? Number(e.target.value) : null
+                )
               }
             >
               {filteredCampaigns.length === 0 && (
                 <option value="">
-                  {campaignsLoading ? "Загрузка кампаний…" : "Кампании не найдены"}
+                  {campaignsLoading
+                    ? "Загрузка кампаний…"
+                    : "Кампании не найдены"}
                 </option>
               )}
               {filteredCampaigns.map((c) => (
@@ -441,7 +458,11 @@ export function CampaignEditor({
         </div>
 
         {streamsError && (
-          <div className="alert alert-danger" style={{ marginTop: 14 }} role="alert">
+          <div
+            className="alert alert-danger"
+            style={{ marginTop: 14 }}
+            role="alert"
+          >
             {streamsError}
           </div>
         )}
@@ -514,7 +535,11 @@ export function CampaignEditor({
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={Boolean(st.validationError) || st.pushing || activeSum !== 100}
+                    disabled={
+                      Boolean(st.validationError) ||
+                      st.pushing ||
+                      activeSum !== 100
+                    }
                     onClick={() => void handlePushToKt(stream.id)}
                   >
                     {st.pushing ? "Отправка…" : "PUSH TO KT"}
@@ -547,7 +572,8 @@ export function CampaignEditor({
                 )}
                 {st.pushError && (
                   <div className="alert alert-danger" role="alert">
-                    <strong>Ошибка PUSH TO KT:</strong> {st.pushError}. Черновик сохранён.
+                    <strong>Ошибка PUSH TO KT:</strong> {st.pushError}.
+                    Черновик сохранён.
                   </div>
                 )}
                 {st.pushSuccess && (
@@ -582,7 +608,9 @@ export function CampaignEditor({
                           >
                             <td>
                               <div className="offer-cell">
-                                <span className="mono-id">#{offer.offer_id}</span>
+                                <span className="mono-id">
+                                  #{offer.offer_id}
+                                </span>
                                 <span>{offer.name}</span>
                                 {offer.removed && (
                                   <span className="tag">(removed)</span>
@@ -622,7 +650,9 @@ export function CampaignEditor({
                                       : "Закрепить долю (Pin)"
                                   }
                                   aria-pressed={offer.pinned}
-                                  className={`pin-btn ${offer.pinned ? "pinned" : ""}`}
+                                  className={`pin-btn ${
+                                    offer.pinned ? "pinned" : ""
+                                  }`}
                                   onClick={() =>
                                     handleTogglePin(stream.id, offer.offer_id)
                                   }
@@ -639,7 +669,10 @@ export function CampaignEditor({
                                   type="button"
                                   className="btn btn-secondary btn-sm"
                                   onClick={() =>
-                                    handleBringBackOffer(stream.id, offer.offer_id)
+                                    handleBringBackOffer(
+                                      stream.id,
+                                      offer.offer_id
+                                    )
                                   }
                                 >
                                   BRING BACK
@@ -718,7 +751,9 @@ export function CampaignEditor({
                                 }
                               >
                                 <span className="mono-id">#{offer.id}</span>
-                                <span className="offer-title">{offer.name}</span>
+                                <span className="offer-title">
+                                  {offer.name}
+                                </span>
                               </button>
                             </li>
                           ))

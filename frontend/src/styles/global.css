@@ -1006,3 +1006,29 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+.toolbar-toggle {
+  display: flex;
+  align-items: flex-end;
+}
+
+.checkbox-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.stream-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
