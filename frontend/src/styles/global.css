@@ -798,12 +798,14 @@ code {
     padding: 18px 14px 42px;
   }
 
+  .form-grid,
   .form-grid-2,
   .form-grid-3,
   .result-meta {
     grid-template-columns: 1fr;
   }
 
+  .field-span-2,
   .tracking-url-cell {
     grid-column: span 1;
   }
