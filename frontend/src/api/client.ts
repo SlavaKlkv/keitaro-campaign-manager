@@ -1,11 +1,15 @@
 import type {
   CampaignCreatePayload,
   CampaignCreateResponse,
+  CampaignStreamsResponse,
   CampaignSummary,
   MetaResponse,
   OperationLogItem,
+  StreamOfferShareInput,
+  UpdateStreamOffersResponse,
 } from "../types";
 
+/** Ошибка API с понятным текстом и HTTP-кодом. */
 export class ApiError extends Error {
   status: number;
 
@@ -25,20 +29,20 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    let message = `Ошибка HTTP ${response.status}`;
+    let message = `Ошибка запроса (${response.status})`;
     try {
       const data = await response.json();
       if (typeof data?.detail === "string") {
         message = data.detail;
-      } else if (data?.detail?.message) {
-        message = data.detail.message;
       } else if (Array.isArray(data?.detail)) {
         message = data.detail
           .map((item: { msg?: string }) => item.msg || JSON.stringify(item))
           .join("; ");
+      } else if (data?.detail && typeof data.detail === "object") {
+        message = data.detail.message || JSON.stringify(data.detail);
       }
     } catch {
-      /* Оставляем текст ошибки по умолчанию */
+      /* Оставляем сообщение по умолчанию */
     }
     throw new ApiError(message, response.status);
   }
@@ -56,6 +60,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  getLogs: (limit = 50) =>
+  getCampaignStreams: (campaignId: number) =>
+    requestJson<CampaignStreamsResponse>(`/api/campaigns/${campaignId}/streams`),
+  updateStreamOffers: (
+    campaignId: number,
+    streamId: number,
+    offers: StreamOfferShareInput[]
+  ) =>
+    requestJson<UpdateStreamOffersResponse>(
+      `/api/campaigns/${campaignId}/streams/${streamId}/offers`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ offers }),
+      }
+    ),
+  listLogs: (limit = 50) =>
     requestJson<OperationLogItem[]>(`/api/logs?limit=${limit}`),
 };

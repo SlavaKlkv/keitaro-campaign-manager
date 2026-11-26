@@ -12,7 +12,7 @@ export function OperationLogs() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getLogs(100);
+      const data = await api.listLogs(100);
       setLogs(data);
     } catch (err) {
       setError(

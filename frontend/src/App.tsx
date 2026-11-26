@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "./api/client";
 import { CampaignCreator } from "./components/CampaignCreator";
+import { CampaignEditor } from "./components/CampaignEditor";
 import { Logo } from "./components/Logo";
 import { OperationLogs } from "./components/OperationLogs";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
@@ -13,7 +14,7 @@ interface HealthState {
   database: string;
 }
 
-/** Главный компонент приложения с навигацией, проверкой здоровья и загрузкой справочников. */
+/** Главный компонент приложения с навигацией и загрузкой справочников Keitaro. */
 export function App() {
   const [tab, setTab] = useState<ActiveTab>("creator");
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
@@ -124,18 +125,10 @@ export function App() {
           />
         )}
         {tab === "editor" && (
-          <section className="card">
-            <div className="section-head">
-              <div>
-                <h1>Редактор кампании</h1>
-                <p className="subtitle">
-                  {selectedCampaignId
-                    ? `Выбрана кампания #${selectedCampaignId}. Интерфейс редактора потоков и офферов подключается на этапе 4.`
-                    : "Интерфейс редактора потоков и офферов подключается на этапе 4."}
-                </p>
-              </div>
-            </div>
-          </section>
+          <CampaignEditor
+            meta={meta}
+            initialCampaignId={selectedCampaignId}
+          />
         )}
         {tab === "logs" && <OperationLogs />}
       </main>

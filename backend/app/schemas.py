@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class DomainItem(BaseModel):
@@ -118,6 +118,87 @@ class CampaignCreateResponse(BaseModel):
     streams_created: int
     tracking_url: str | None = None
     keitaro_url: str
+
+
+class StreamOfferItem(BaseModel):
+    """Оффер внутри потока Keitaro, обогащённый данными из справочника."""
+
+    offer_id: int
+    name: str
+    share: int
+    state: str = "active"
+    country: list[str] = Field(default_factory=list)
+
+
+class StreamFilterItem(BaseModel):
+    """Фильтр потока Keitaro."""
+
+    name: str
+    mode: str | None = None
+    payload: Any = None
+
+
+class StreamInfo(BaseModel):
+    """Информация о потоке кампании для редактора."""
+
+    id: int
+    campaign_id: int
+    name: str
+    type: str | None = None
+    position: int | None = None
+    weight: int | None = None
+    schema_name: str | None = Field(default=None, alias="schema")
+    action_type: str | None = None
+    action_payload: str | None = None
+    state: str | None = None
+    filters: list[StreamFilterItem] = Field(default_factory=list)
+    offers: list[StreamOfferItem] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class CampaignStreamsResponse(BaseModel):
+    """Ответ с данными кампании и списком её потоков."""
+
+    campaign: CampaignSummary
+    streams: list[StreamInfo]
+
+
+class StreamOfferShareInput(BaseModel):
+    """Элемент обновления списка офферов потока."""
+
+    offer_id: int = Field(gt=0)
+    share: int = Field(ge=0, le=100)
+    state: str = Field(default="active", pattern="^(active|disabled)$")
+
+
+class UpdateStreamOffersRequest(BaseModel):
+    """Запрос PUSH TO KT на обновление офферов потока."""
+
+    offers: list[StreamOfferShareInput] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_offers(self) -> "UpdateStreamOffersRequest":
+        """Проверяет отсутствие дубликатов offer_id и сумму долей активных офферов == 100%."""
+        ids = [item.offer_id for item in self.offers]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Список офферов не должен содержать дубликаты offer_id")
+        active_shares = [item.share for item in self.offers if item.state == "active"]
+        if not active_shares:
+            raise ValueError("В потоке должен остаться хотя бы один активный оффер")
+        total = sum(active_shares)
+        if total != 100:
+            raise ValueError(f"Сумма долей активных офферов должна быть 100% (сейчас {total}%)")
+        return self
+
+
+class UpdateStreamOffersResponse(BaseModel):
+    """Ответ после успешного обновления офферов потока в Keitaro."""
+
+    campaign_id: int
+    stream_id: int
+    offers: list[StreamOfferShareInput]
+    updated: bool
 
 
 class OperationLogItem(BaseModel):
