@@ -1,33 +1,23 @@
 import type { FC } from "react";
 
-/** Фирменный векторный логотип в стиле Keitaro (адаптируется под тему через CSS-токены). */
+/** Векторный логотип проекта без рамки, окрашивается через currentColor (--brand-green). */
 export const Logo: FC<{ size?: number }> = ({ size }) => (
   <svg
     className="brand-logo"
     width={size}
     height={size}
-    viewBox="0 0 24 24"
+    viewBox="4 4 16 16"
     fill="none"
     aria-hidden="true"
   >
-    <rect
-      x="1.5"
-      y="1.5"
-      width="21"
-      height="21"
-      rx="5.5"
-      fill="var(--accent-soft)"
-      stroke="var(--accent-line)"
-      strokeWidth="1.5"
-    />
     <path
-      d="M7.25 6.5v11M7.25 12h2.25l6.75-5.25M9.5 12l6.75 5.25"
-      stroke="var(--accent)"
-      strokeWidth="2"
+      d="M6.5 12h4l3-4.5h4M10.5 12l3 4.5h4"
+      stroke="currentColor"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
-    <circle cx="16.5" cy="6.75" r="1.45" fill="var(--accent)" />
-    <circle cx="16.5" cy="17.25" r="1.45" fill="var(--accent)" />
+    <circle cx="17.5" cy="7.5" r="1.4" fill="currentColor" />
+    <circle cx="17.5" cy="16.5" r="1.4" fill="currentColor" />
   </svg>
 );

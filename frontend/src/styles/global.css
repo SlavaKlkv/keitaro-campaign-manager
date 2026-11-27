@@ -62,7 +62,6 @@ code {
   gap: 0.875rem;
   padding: 0.75rem 1.5rem;
   background: var(--panel);
-  border-top: 2px solid var(--accent);
   border-bottom: 1px solid var(--line);
 }
 
@@ -78,6 +77,7 @@ code {
   width: 1.75rem;
   height: 1.75rem;
   flex-shrink: 0;
+  color: var(--brand-green);
 }
 
 .brand-text strong {
@@ -85,6 +85,7 @@ code {
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--brand-green);
 }
 
 .brand-text small {
@@ -106,14 +107,14 @@ code {
 }
 
 .nav-tab {
-  border: 1px solid transparent;
+  border: 0;
   background: transparent;
   color: var(--muted);
   padding: 0.4375rem 0.875rem;
   border-radius: 0.4375rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nav-tab:hover {
@@ -121,10 +122,9 @@ code {
 }
 
 .nav-tab.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--accent-line);
-  font-weight: 600;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
 }
 
 .topbar-right {
@@ -203,7 +203,6 @@ code {
 
 .health-dot.ok {
   background: var(--success);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .health-dot.err {
@@ -629,12 +628,10 @@ code {
   background: var(--accent);
   color: var(--on-accent);
   border-color: var(--accent);
-  font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  opacity: 0.9;
 }
 
 .btn-secondary {
@@ -803,6 +800,16 @@ code {
 @media (max-width: 780px) {
   .topbar {
     padding: 0.75rem 1rem;
+  }
+
+  .nav-tabs {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .nav-tab {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
   }
 
   .main-container {
