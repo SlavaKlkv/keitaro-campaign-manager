@@ -201,7 +201,18 @@ export function CampaignEditor({
       );
       const calc = recalculate
         ? recalculateDraftShares(offers)
-        : { offers, error: null };
+        : (() => {
+            const activeSum = offers
+              .filter((o) => !o.removed)
+              .reduce((acc, o) => acc + o.share, 0);
+            return {
+              offers,
+              error:
+                activeSum !== 100
+                  ? `Сумма долей активных офферов равна ${activeSum}% вместо 100%. Закрепите долю (Pin) для пересчёта остатка или выровняйте сумму до 100%.`
+                  : null,
+            };
+          })();
       return {
         ...prev,
         [streamId]: {
@@ -231,13 +242,16 @@ export function CampaignEditor({
   ) => {
     const parsed =
       raw === "" ? 0 : Math.max(0, Math.min(100, Math.trunc(Number(raw))));
-    updateStreamDraft(streamId, (draft) => ({
-      offers: draft.map((o) =>
-        o.offer_id === offerId
-          ? { ...o, share: Number.isNaN(parsed) ? 0 : parsed, pinned: true }
-          : o
-      ),
-    }));
+    const nextShare = Number.isNaN(parsed) ? 0 : parsed;
+    updateStreamDraft(streamId, (draft) => {
+      const target = draft.find((o) => o.offer_id === offerId);
+      return {
+        offers: draft.map((o) =>
+          o.offer_id === offerId ? { ...o, share: nextShare } : o
+        ),
+        recalculate: Boolean(target?.pinned),
+      };
+    });
   };
 
   const handleRemoveOffer = (streamId: number, offerId: number) => {

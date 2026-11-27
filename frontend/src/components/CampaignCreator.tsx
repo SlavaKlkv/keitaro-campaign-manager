@@ -27,7 +27,7 @@ export function CampaignCreator({
   onOpenInEditor,
 }: CampaignCreatorProps) {
   const [name, setName] = useState("");
-  const [countryCode, setCountryCode] = useState("AU");
+  const [countryCode, setCountryCode] = useState("ES");
   const [alias, setAlias] = useState("");
   const [domainId, setDomainId] = useState<string>("");
   const [groupId, setGroupId] = useState<string>("");
@@ -180,7 +180,7 @@ export function CampaignCreator({
                 type="text"
                 required
                 maxLength={2}
-                placeholder="AU"
+                placeholder="ES"
                 value={countryCode}
                 onChange={(e) =>
                   setCountryCode(e.target.value.toUpperCase().slice(0, 2))

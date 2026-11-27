@@ -45,7 +45,7 @@ class OfferItem(BaseModel):
 
 
 class MetaResponse(BaseModel):
-    """Справочники Keitaro для форм создаватора и редактора."""
+    """Справочники Keitaro для форм создания кампаний и редактора."""
 
     domains: list[DomainItem]
     groups: list[GroupItem]
