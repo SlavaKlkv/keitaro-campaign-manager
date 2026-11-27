@@ -360,14 +360,16 @@ export function CampaignCreator({
               </p>
             </div>
             <div className="btn-row">
-              <a
-                className="btn btn-secondary"
-                href={createdResult.keitaro_url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                VIEW IN KT ↗
-              </a>
+              {createdResult.keitaro_url && (
+                <a
+                  className="btn btn-secondary"
+                  href={createdResult.keitaro_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  VIEW IN KT ↗
+                </a>
+              )}
               <button
                 type="button"
                 className="btn btn-primary"

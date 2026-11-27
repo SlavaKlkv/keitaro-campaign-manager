@@ -55,7 +55,7 @@ export interface CampaignSummary {
   traffic_source_id?: number | null;
   type?: string | null;
   cost_type?: string | null;
-  keitaro_url: string;
+  keitaro_url: string | null;
 }
 
 export interface CampaignCreatePayload {
@@ -79,7 +79,7 @@ export interface CampaignCreateResponse {
   traffic_source_id: number;
   streams_created: number;
   tracking_url?: string | null;
-  keitaro_url: string;
+  keitaro_url: string | null;
 }
 
 export interface StreamOfferItem {

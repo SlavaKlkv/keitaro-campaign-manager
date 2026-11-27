@@ -69,7 +69,7 @@ class CampaignSummary(BaseModel):
     traffic_source_id: int | None = None
     type: str | None = None
     cost_type: str | None = None
-    keitaro_url: str
+    keitaro_url: str | None = None
 
 
 class CampaignCreateRequest(BaseModel):
@@ -117,7 +117,7 @@ class CampaignCreateResponse(BaseModel):
     traffic_source_id: int
     streams_created: int
     tracking_url: str | None = None
-    keitaro_url: str
+    keitaro_url: str | None = None
 
 
 class StreamOfferItem(BaseModel):

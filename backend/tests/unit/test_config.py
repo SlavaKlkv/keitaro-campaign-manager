@@ -3,6 +3,7 @@
 import pytest
 
 from app.config import Settings
+from app.keitaro_helpers import build_keitaro_campaign_url
 
 
 @pytest.mark.parametrize(
@@ -33,3 +34,24 @@ def test_cors_origins_list_parsing() -> None:
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+
+
+@pytest.mark.parametrize(
+    ("base_url", "campaign_id", "expected"),
+    [
+        ("https://keitaro.example.com", 55, "https://keitaro.example.com/admin/#!/campaigns/55"),
+        ("https://keitaro.example.com/", 55, "https://keitaro.example.com/admin/#!/campaigns/55"),
+        ("https://keitaro.example.com/admin_api/v1", 55, "https://keitaro.example.com/admin/#!/campaigns/55"),
+        ("https://keitaro.example.com/admin/", 55, "https://keitaro.example.com/admin/#!/campaigns/55"),
+        ("", 55, None),
+        ("   ", 55, None),
+        (None, 55, None),
+    ],
+)
+def test_build_keitaro_campaign_url(
+    base_url: str | None,
+    campaign_id: int,
+    expected: str | None,
+) -> None:
+    """Проверяет формирование ссылки VIEW IN KT и возврат None при пустом base_url."""
+    assert build_keitaro_campaign_url(base_url, campaign_id) == expected

@@ -18,6 +18,7 @@ class FakeEditorKeitaroClient:
     """Поддельный клиент Keitaro для тестирования сценариев редактора."""
 
     def __init__(self, *, fail_update: bool = False) -> None:
+        self.base_url = "https://keitaro.example.com"
         self.fail_update = fail_update
         self.updated_streams: list[tuple[int, dict[str, Any]]] = []
 
@@ -108,6 +109,7 @@ def test_get_campaign_streams_enriches_offers_and_sorts_by_position(
     assert resp.status_code == 200
     data = resp.json()
     assert data["campaign"]["id"] == 55
+    assert data["campaign"]["keitaro_url"] == "https://keitaro.example.com/admin/#!/campaigns/55"
     streams = data["streams"]
     assert [s["id"] for s in streams] == [501, 502]
     assert streams[0]["schema"] == "redirect"

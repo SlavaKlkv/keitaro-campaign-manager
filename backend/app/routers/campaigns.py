@@ -27,7 +27,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
 
 
-def _to_campaign_summary(row: dict[str, Any], base_url: str) -> CampaignSummary:
+def _to_campaign_summary(row: dict[str, Any], base_url: str | None) -> CampaignSummary:
     cid = int(row["id"])
     return CampaignSummary(
         id=cid,
@@ -61,7 +61,7 @@ async def list_campaigns(
     except KeitaroError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
-    base_url = get_settings().keitaro_base_url
+    base_url = getattr(client, "base_url", None) or get_settings().keitaro_base_url
     return [
         _to_campaign_summary(row, base_url)
         for row in extract_rows(payload)
@@ -201,7 +201,7 @@ async def create_campaign(
         },
     )
 
-    base_url = get_settings().keitaro_base_url
+    base_url = getattr(client, "base_url", None) or get_settings().keitaro_base_url
     return CampaignCreateResponse(
         id=campaign_id,
         name=str(created.get("name") or payload.name),
@@ -296,7 +296,7 @@ async def get_campaign_streams(
         )
 
     streams.sort(key=lambda s: (s.position if s.position is not None else 9999, s.id))
-    base_url = get_settings().keitaro_base_url
+    base_url = getattr(client, "base_url", None) or get_settings().keitaro_base_url
     return CampaignStreamsResponse(
         campaign=_to_campaign_summary(campaign_raw, base_url),
         streams=streams,

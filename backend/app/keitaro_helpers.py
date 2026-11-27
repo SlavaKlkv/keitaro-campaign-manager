@@ -1,5 +1,6 @@
 """Вспомогательные функции нормализации ответов Keitaro API."""
 
+import re
 from typing import Any
 
 
@@ -15,9 +16,14 @@ def extract_rows(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
-def build_keitaro_campaign_url(base_url: str, campaign_id: int) -> str:
+def build_keitaro_campaign_url(base_url: str | None, campaign_id: int) -> str | None:
     """Формирует прямую ссылку на кампанию в веб-интерфейсе Keitaro."""
-    clean = base_url.rstrip("/")
+    if not base_url:
+        return None
+    clean = base_url.strip().rstrip("/")
+    clean = re.sub(r"(/admin_api(/v\d+)?|/admin)+$", "", clean, flags=re.IGNORECASE).rstrip("/")
+    if not clean:
+        return None
     return f"{clean}/admin/#!/campaigns/{campaign_id}"
 
 
