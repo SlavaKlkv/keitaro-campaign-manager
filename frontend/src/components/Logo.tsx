@@ -1,8 +1,9 @@
 import type { FC } from "react";
 
 /** Монохромный векторный логотип проекта (адаптируется под текущую тему через currentColor). */
-export const Logo: FC<{ size?: number }> = ({ size = 28 }) => (
+export const Logo: FC<{ size?: number }> = ({ size }) => (
   <svg
+    className="brand-logo"
     width={size}
     height={size}
     viewBox="0 0 24 24"

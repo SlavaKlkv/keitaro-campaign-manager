@@ -58,7 +58,7 @@ function toDraftOffers(
     share: o.share,
     pinned: false,
     removed: o.state !== "active",
-    country: [],
+    country: o.country ?? [],
   }));
 
   // Сохраняем ранее известные офферы, исчезнувшие из Keitaro, как (removed) для возможности BRING BACK
@@ -181,6 +181,11 @@ export function CampaignEditor({
     );
   }, [campaigns, campaignFilter]);
 
+  const anyPushing = useMemo(
+    () => Object.values(streamStates).some((s) => s.pushing),
+    [streamStates]
+  );
+
   const updateStreamDraft = (
     streamId: number,
     updater: (
@@ -189,30 +194,14 @@ export function CampaignEditor({
     ) => {
       offers: DraftOffer[];
       extra?: Partial<StreamState>;
-      recalculate?: boolean;
+      fixedOfferId?: number;
     }
   ) => {
     setStreamStates((prev) => {
       const current = prev[streamId];
-      if (!current) return prev;
-      const { offers, extra, recalculate = true } = updater(
-        current.draft,
-        current
-      );
-      const calc = recalculate
-        ? recalculateDraftShares(offers)
-        : (() => {
-            const activeSum = offers
-              .filter((o) => !o.removed)
-              .reduce((acc, o) => acc + o.share, 0);
-            return {
-              offers,
-              error:
-                activeSum !== 100
-                  ? `Сумма долей активных офферов равна ${activeSum}% вместо 100%. Закрепите долю (Pin) для пересчёта остатка или выровняйте сумму до 100%.`
-                  : null,
-            };
-          })();
+      if (!current || current.pushing) return prev;
+      const { offers, extra, fixedOfferId } = updater(current.draft, current);
+      const calc = recalculateDraftShares(offers, fixedOfferId);
       return {
         ...prev,
         [streamId]: {
@@ -243,15 +232,12 @@ export function CampaignEditor({
     const parsed =
       raw === "" ? 0 : Math.max(0, Math.min(100, Math.trunc(Number(raw))));
     const nextShare = Number.isNaN(parsed) ? 0 : parsed;
-    updateStreamDraft(streamId, (draft) => {
-      const target = draft.find((o) => o.offer_id === offerId);
-      return {
-        offers: draft.map((o) =>
-          o.offer_id === offerId ? { ...o, share: nextShare } : o
-        ),
-        recalculate: Boolean(target?.pinned),
-      };
-    });
+    updateStreamDraft(streamId, (draft) => ({
+      offers: draft.map((o) =>
+        o.offer_id === offerId ? { ...o, share: nextShare } : o
+      ),
+      fixedOfferId: offerId,
+    }));
   };
 
   const handleRemoveOffer = (streamId: number, offerId: number) => {
@@ -274,7 +260,7 @@ export function CampaignEditor({
 
   const handleAddOffer = (streamId: number) => {
     const st = streamStates[streamId];
-    if (!st?.selectedToAdd) return;
+    if (!st?.selectedToAdd || st.pushing) return;
     const picked = st.selectedToAdd;
     updateStreamDraft(streamId, (draft) => {
       const existing = draft.find((o) => o.offer_id === picked.id);
@@ -309,7 +295,7 @@ export function CampaignEditor({
   const handleCancelDraft = (streamId: number) => {
     setStreamStates((prev) => {
       const current = prev[streamId];
-      if (!current) return prev;
+      if (!current || current.pushing) return prev;
       return {
         ...prev,
         [streamId]: {
@@ -326,10 +312,13 @@ export function CampaignEditor({
   const handlePushToKt = async (streamId: number) => {
     if (!selectedCampaignId) return;
     const current = streamStates[streamId];
-    if (!current || current.validationError) return;
+    if (!current || current.pushing || current.validationError) return;
 
     const activeOffers = current.draft.filter((o) => !o.removed);
     if (activeOffers.length === 0) return;
+
+    // Фиксируем снимок отправляемого состояния, чтобы ответ API не затёр новые правки в baseline
+    const sentSnapshot = current.draft.map((item) => ({ ...item }));
 
     setStreamStates((prev) => ({
       ...prev,
@@ -357,7 +346,7 @@ export function CampaignEditor({
           ...prev,
           [streamId]: {
             ...st,
-            baseline: st.draft,
+            baseline: sentSnapshot,
             pushing: false,
             pushSuccess: "Изменения сохранены в Keitaro",
           },
@@ -400,17 +389,17 @@ export function CampaignEditor({
             <button
               type="button"
               className="btn btn-secondary"
-              disabled={!selectedCampaignId || streamsLoading}
+              disabled={!selectedCampaignId || streamsLoading || anyPushing}
               onClick={() =>
                 selectedCampaignId && void fetchStreamsFromKt(selectedCampaignId)
               }
             >
               {streamsLoading ? "Загрузка…" : "FETCH STREAMS FROM KT"}
             </button>
-            {streamsData?.keitaro_url && (
+            {streamsData?.campaign.keitaro_url && (
               <a
                 className="btn btn-secondary"
-                href={streamsData.keitaro_url}
+                href={streamsData.campaign.keitaro_url}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -436,7 +425,7 @@ export function CampaignEditor({
             <label htmlFor="cmp-select">Кампания</label>
             <select
               id="cmp-select"
-              disabled={campaignsLoading || filteredCampaigns.length === 0}
+              disabled={campaignsLoading || filteredCampaigns.length === 0 || anyPushing}
               value={selectedCampaignId ?? ""}
               onChange={(e) =>
                 setSelectedCampaignId(
@@ -474,7 +463,7 @@ export function CampaignEditor({
         {streamsError && (
           <div
             className="alert alert-danger"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: "0.875rem" }}
             role="alert"
           >
             {streamsError}
@@ -524,7 +513,7 @@ export function CampaignEditor({
           >
             <div className="card-head">
               <div>
-                <div className="btn-row" style={{ marginBottom: 6 }}>
+                <div className="btn-row" style={{ marginBottom: "0.375rem" }}>
                   <span className="status-badge">
                     {stream.type || "stream"} · {stream.schema || "unknown"}
                   </span>
@@ -601,10 +590,10 @@ export function CampaignEditor({
                     <thead>
                       <tr>
                         <th>Offer</th>
-                        <th style={{ width: 170 }}>
+                        <th style={{ width: "10.625rem" }}>
                           Share (сумма: {activeSum}%)
                         </th>
-                        <th style={{ width: 140 }}>Actions</th>
+                        <th style={{ width: "8.75rem" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -637,7 +626,7 @@ export function CampaignEditor({
                                   type="number"
                                   min={0}
                                   max={100}
-                                  disabled={offer.removed}
+                                  disabled={offer.removed || st.pushing}
                                   aria-label={`Доля для оффера ${offer.name}`}
                                   className="share-input"
                                   value={offer.share}
@@ -652,7 +641,7 @@ export function CampaignEditor({
                                 <span className="muted-copy">%</span>
                                 <button
                                   type="button"
-                                  disabled={offer.removed}
+                                  disabled={offer.removed || st.pushing}
                                   aria-label={
                                     offer.pinned
                                       ? `Открепить долю ${offer.name}`
@@ -682,6 +671,7 @@ export function CampaignEditor({
                                 <button
                                   type="button"
                                   className="btn btn-secondary btn-sm"
+                                  disabled={st.pushing}
                                   onClick={() =>
                                     handleBringBackOffer(
                                       stream.id,
@@ -695,6 +685,7 @@ export function CampaignEditor({
                                 <button
                                   type="button"
                                   className="btn btn-danger btn-sm"
+                                  disabled={st.pushing}
                                   onClick={() =>
                                     handleRemoveOffer(stream.id, offer.offer_id)
                                   }
@@ -717,16 +708,18 @@ export function CampaignEditor({
                       className="inline-input"
                       placeholder="Поиск оффера по ID или названию для добавления…"
                       aria-label="Поиск оффера для добавления в поток"
+                      disabled={st.pushing}
                       value={st.addQuery}
-                      onFocus={() =>
+                      onFocus={() => {
+                        if (st.pushing) return;
                         setStreamStates((prev) => ({
                           ...prev,
                           [stream.id]: {
                             ...prev[stream.id],
                             addDropdownOpen: true,
                           },
-                        }))
-                      }
+                        }));
+                      }}
                       onChange={(e) => {
                         const val = e.target.value;
                         setStreamStates((prev) => ({
@@ -740,7 +733,7 @@ export function CampaignEditor({
                         }));
                       }}
                     />
-                    {st.addDropdownOpen && meta && (
+                    {st.addDropdownOpen && !st.pushing && meta && (
                       <ul className="autocomplete-list" role="listbox">
                         {addCandidates.length === 0 ? (
                           <li className="autocomplete-empty">
@@ -778,7 +771,7 @@ export function CampaignEditor({
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    disabled={!st.selectedToAdd}
+                    disabled={!st.selectedToAdd || st.pushing}
                     onClick={() => handleAddOffer(stream.id)}
                   >
                     ADD
