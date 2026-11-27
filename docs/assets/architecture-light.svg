@@ -4,14 +4,14 @@
       .font-sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
       .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
       .badge-text { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
-      .title { font-size: 15px; font-weight: 600; fill: #111827; }
-      .sub { font-size: 12px; font-weight: 400; fill: #4b5563; }
-      .sub-sm { font-size: 10.5px; font-weight: 400; fill: #4b5563; }
-      .edge-label { font-size: 11px; font-weight: 500; fill: #374151; }
-      .edge-line { fill: none; stroke: #6b7280; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .title { font-size: 15px; font-weight: 600; fill: #16181a; }
+      .sub { font-size: 12px; font-weight: 400; fill: #5c5c5b; }
+      .sub-sm { font-size: 10.5px; font-weight: 400; fill: #5c5c5b; }
+      .edge-label { font-size: 11px; font-weight: 500; fill: #3d3f3f; }
+      .edge-line { fill: none; stroke: #70706f; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     </style>
     <marker id="arrow-light" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#6b7280" />
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#70706f" />
     </marker>
   </defs>
 
@@ -28,19 +28,19 @@
 
   <!-- Frontend -->
   <g>
-    <rect x="12" y="70" width="196" height="120" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
-    <rect x="26" y="84" width="76" height="20" rx="4" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" />
-    <text class="font-sans badge-text" x="64" y="97.5" text-anchor="middle" fill="#1d4ed8">FRONTEND</text>
-    <text class="font-sans title" x="26" y="126">KT Studio UI</text>
+    <rect x="12" y="70" width="196" height="120" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" />
+    <rect x="26" y="84" width="76" height="20" rx="4" fill="#efefed" stroke="#dcdcda" stroke-width="1" />
+    <text class="font-sans badge-text" x="64" y="97.5" text-anchor="middle" fill="#5c5c5b">FRONTEND</text>
+    <text class="font-sans title" style="fill: #15803d;" x="26" y="126">KT Studio UI</text>
     <text class="font-sans sub" x="26" y="148">React 18 · TypeScript</text>
     <text class="font-sans sub" x="26" y="166">Vite / Nginx</text>
   </g>
 
   <!-- Backend -->
   <g>
-    <rect x="296" y="70" width="204" height="120" rx="10" fill="#ffffff" stroke="#6ee7b7" stroke-width="1.5" />
-    <rect x="310" y="84" width="70" height="20" rx="4" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1" />
-    <text class="font-sans badge-text" x="345" y="97.5" text-anchor="middle" fill="#047857">BACKEND</text>
+    <rect x="296" y="70" width="204" height="120" rx="10" fill="#ffffff" stroke="#dcdcda" stroke-width="1.5" />
+    <rect x="310" y="84" width="70" height="20" rx="4" fill="#efefed" stroke="#dcdcda" stroke-width="1" />
+    <text class="font-sans badge-text" x="345" y="97.5" text-anchor="middle" fill="#5c5c5b">BACKEND</text>
     <text class="font-sans title" x="310" y="126">Backend API</text>
     <text class="font-sans sub" x="310" y="148">FastAPI · SQLAlchemy</text>
     <text class="font-sans sub" x="310" y="166">httpx</text>
@@ -48,18 +48,18 @@
 
   <!-- External API -->
   <g>
-    <rect x="660" y="18" width="208" height="100" rx="10" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5" />
-    <rect x="674" y="32" width="96" height="20" rx="4" fill="#fffbeb" stroke="#fde68a" stroke-width="1" />
-    <text class="font-sans badge-text" x="722" y="45.5" text-anchor="middle" fill="#b45309">EXTERNAL API</text>
+    <rect x="660" y="18" width="208" height="100" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="5 3" />
+    <rect x="674" y="32" width="96" height="20" rx="4" fill="#ecfdf3" stroke="#a7f3c9" stroke-width="1" />
+    <text class="font-sans badge-text" x="722" y="45.5" text-anchor="middle" fill="#166534">EXTERNAL API</text>
     <text class="font-sans title" x="674" y="74">Keitaro Admin API v1</text>
     <text class="font-sans sub-sm" x="674" y="95">Кампании · потоки · справочники</text>
   </g>
 
   <!-- Database -->
   <g>
-    <rect x="660" y="142" width="208" height="100" rx="10" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
-    <rect x="674" y="156" width="76" height="20" rx="4" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1" />
-    <text class="font-sans badge-text" x="712" y="169.5" text-anchor="middle" fill="#6d28d9">DATABASE</text>
+    <rect x="660" y="142" width="208" height="100" rx="10" fill="#ffffff" stroke="#336791" stroke-width="1.5" />
+    <rect x="674" y="156" width="76" height="20" rx="4" fill="#efefed" stroke="#dcdcda" stroke-width="1" />
+    <text class="font-sans badge-text" x="712" y="169.5" text-anchor="middle" fill="#5c5c5b">DATABASE</text>
     <text class="font-sans title" x="674" y="198">PostgreSQL 16</text>
     <text class="font-mono sub" x="674" y="219">operation_logs</text>
   </g>

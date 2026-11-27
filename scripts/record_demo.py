@@ -329,7 +329,7 @@ def main() -> None:
             rec.click(page.locator('button[aria-label="Системная тема"]'), pause_after=0.6)
 
             # 2. Создание кампаний: имя, переключение Geo ES (по умолчанию) → AU, оффер
-            rec.type_text(page.locator("#cmp-name"), "Demo AU Campaign", delay=40)
+            rec.type_text(page.locator("#cmp-name"), "test_kulikov_demo_au", delay=40)
             rec.click(
                 page.locator(".geo-chips button", has_text="AU"),
                 settle=0.22,

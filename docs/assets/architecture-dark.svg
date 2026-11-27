@@ -5,13 +5,13 @@
       .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
       .badge-text { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
       .title { font-size: 15px; font-weight: 600; fill: #f3f4f6; }
-      .sub { font-size: 12px; font-weight: 400; fill: #9ca3af; }
-      .sub-sm { font-size: 10.5px; font-weight: 400; fill: #9ca3af; }
-      .edge-label { font-size: 11px; font-weight: 500; fill: #d1d5db; }
-      .edge-line { fill: none; stroke: #8b949e; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .sub { font-size: 12px; font-weight: 400; fill: #8e939e; }
+      .sub-sm { font-size: 10.5px; font-weight: 400; fill: #8e939e; }
+      .edge-label { font-size: 11px; font-weight: 500; fill: #c7cad0; }
+      .edge-line { fill: none; stroke: #7f848f; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     </style>
     <marker id="arrow-dark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#8b949e" />
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#7f848f" />
     </marker>
   </defs>
 
@@ -28,19 +28,19 @@
 
   <!-- Frontend -->
   <g>
-    <rect x="12" y="70" width="196" height="120" rx="10" fill="#161b22" stroke="#2563eb" stroke-width="1.5" />
-    <rect x="26" y="84" width="76" height="20" rx="4" fill="#172554" stroke="#1e40af" stroke-width="1" />
-    <text class="font-sans badge-text" x="64" y="97.5" text-anchor="middle" fill="#93c5fd">FRONTEND</text>
-    <text class="font-sans title" x="26" y="126">KT Studio UI</text>
+    <rect x="12" y="70" width="196" height="120" rx="10" fill="#111317" stroke="#2ea043" stroke-width="1.5" />
+    <rect x="26" y="84" width="76" height="20" rx="4" fill="#17191e" stroke="#272a31" stroke-width="1" />
+    <text class="font-sans badge-text" x="64" y="97.5" text-anchor="middle" fill="#8e939e">FRONTEND</text>
+    <text class="font-sans title" style="fill: #4ade80;" x="26" y="126">KT Studio UI</text>
     <text class="font-sans sub" x="26" y="148">React 18 · TypeScript</text>
     <text class="font-sans sub" x="26" y="166">Vite / Nginx</text>
   </g>
 
   <!-- Backend -->
   <g>
-    <rect x="296" y="70" width="204" height="120" rx="10" fill="#161b22" stroke="#059669" stroke-width="1.5" />
-    <rect x="310" y="84" width="70" height="20" rx="4" fill="#064e3b" stroke="#065f46" stroke-width="1" />
-    <text class="font-sans badge-text" x="345" y="97.5" text-anchor="middle" fill="#6ee7b7">BACKEND</text>
+    <rect x="296" y="70" width="204" height="120" rx="10" fill="#111317" stroke="#272a31" stroke-width="1.5" />
+    <rect x="310" y="84" width="70" height="20" rx="4" fill="#17191e" stroke="#272a31" stroke-width="1" />
+    <text class="font-sans badge-text" x="345" y="97.5" text-anchor="middle" fill="#8e939e">BACKEND</text>
     <text class="font-sans title" x="310" y="126">Backend API</text>
     <text class="font-sans sub" x="310" y="148">FastAPI · SQLAlchemy</text>
     <text class="font-sans sub" x="310" y="166">httpx</text>
@@ -48,18 +48,18 @@
 
   <!-- External API -->
   <g>
-    <rect x="660" y="18" width="208" height="100" rx="10" fill="#161b22" stroke="#d97706" stroke-width="1.5" />
-    <rect x="674" y="32" width="96" height="20" rx="4" fill="#451a03" stroke="#78350f" stroke-width="1" />
-    <text class="font-sans badge-text" x="722" y="45.5" text-anchor="middle" fill="#fcd34d">EXTERNAL API</text>
+    <rect x="660" y="18" width="208" height="100" rx="10" fill="#111317" stroke="#2ea043" stroke-width="1.5" stroke-dasharray="5 3" />
+    <rect x="674" y="32" width="96" height="20" rx="4" fill="#112218" stroke="#235334" stroke-width="1" />
+    <text class="font-sans badge-text" x="722" y="45.5" text-anchor="middle" fill="#4ade80">EXTERNAL API</text>
     <text class="font-sans title" x="674" y="74">Keitaro Admin API v1</text>
     <text class="font-sans sub-sm" x="674" y="95">Кампании · потоки · справочники</text>
   </g>
 
   <!-- Database -->
   <g>
-    <rect x="660" y="142" width="208" height="100" rx="10" fill="#161b22" stroke="#7c3aed" stroke-width="1.5" />
-    <rect x="674" y="156" width="76" height="20" rx="4" fill="#2e1065" stroke="#4c1d95" stroke-width="1" />
-    <text class="font-sans badge-text" x="712" y="169.5" text-anchor="middle" fill="#c4b5fd">DATABASE</text>
+    <rect x="660" y="142" width="208" height="100" rx="10" fill="#111317" stroke="#4f8cc9" stroke-width="1.5" />
+    <rect x="674" y="156" width="76" height="20" rx="4" fill="#17191e" stroke="#272a31" stroke-width="1" />
+    <text class="font-sans badge-text" x="712" y="169.5" text-anchor="middle" fill="#8e939e">DATABASE</text>
     <text class="font-sans title" x="674" y="198">PostgreSQL 16</text>
     <text class="font-mono sub" x="674" y="219">operation_logs</text>
   </g>
