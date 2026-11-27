@@ -22,21 +22,15 @@ https://github.com/user-attachments/assets/dd3ae24f-67e3-489e-a4a1-aad7956017eb
 
 *Переключение тем (тёмная → светлая → системная) → создание кампании (`Geo` `ES` → `AU`, автокомплит `Offer`) → переход в управление потоками (`Настроить кампанию`) → добавление офферов (`ADD`) → ввод `Share` и закрепление `Pin` с пересчётом `38% / 37% / 25%` → отправка в трекер (`PUSH TO KT`) → удаление и откат черновика (`REMOVE` → `CANCEL`) → журнал операций в PostgreSQL.*
 
-Локальная запись: [`docs/assets/demo.mp4`](docs/assets/demo.mp4) · Что осталось за кадром: [`SCREENCAST_NOTES.md`](SCREENCAST_NOTES.md).
+Локальная запись: [`docs/assets/demo.mp4`](docs/assets/demo.mp4).
 
 ## Архитектура
 
-```mermaid
-flowchart LR
-    UI["KT Studio UI<br/>React 18 · TypeScript · Vite / Nginx"]
-    API["Backend API<br/>FastAPI · SQLAlchemy · httpx"]
-    KT["Keitaro Admin API v1"]
-    DB[("PostgreSQL 16<br/>operation_logs")]
-
-    UI <-->|"REST JSON"| API
-    API <-->|"Кампании, потоки, справочники"| KT
-    API -->|"Аудит изменений"| DB
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/architecture-light.svg">
+  <img alt="Архитектура KT Studio" src="docs/assets/architecture-light.svg" width="100%">
+</picture>
 
 | Эндпоинт | Назначение |
 | --- | --- |
@@ -45,7 +39,7 @@ flowchart LR
 | `GET /api/campaigns` | Список кампаний Keitaro |
 | `POST /api/campaigns` | Создание кампании с двумя потоками и запись в журнал |
 | `GET /api/campaigns/{id}/streams` | Загрузка потоков и офферов выбранной кампании |
-| `PUT /api/campaigns/{id}/streams/{stream_id}` | Обновление состава и долей офферов потока в Keitaro |
+| `PUT /api/campaigns/{id}/streams/{stream_id}/offers` | Обновление состава и долей офферов потока в Keitaro |
 | `DELETE /api/campaigns/{id}` | Удаление кампании из Keitaro |
 | `GET /api/logs` | История операций из таблицы `operation_logs` |
 
@@ -54,7 +48,7 @@ flowchart LR
 | Раздел интерфейса | Как работает |
 | --- | --- |
 | **Создание** | Поля `Name`, `Geo` (ISO-2 код страны), автокомплит `Offer` по ID/названию, выбор домена, группы и источника трафика со значениями по умолчанию. Создаёт кампанию с ротацией «По позиции» (`type: "position"`) и моделью затрат `CPC`: **Flow 1** фильтрует выбранную страну (`accept`) и редиректит на `https://google.com`, **Flow 2** ведёт трафик на выбранный оффер со `100%` веса. Возвращает ссылку `VIEW IN KT` и кнопку `Настроить кампанию`. |
-| **Управление** | Поиск кампании по ID/имени/алиасу, `FETCH STREAMS FROM KT`, `VIEW IN KT`, переключатель `SHOW ALL OFFERS`. Все правки живут в локальном черновике (`draft`) с подсветкой изменений: `ADD` добавляет оффер, `REMOVE` переводит долю в `0%` со статусом `(removed)` и кнопкой `BRING BACK`. Закрепление `Pin` и ручной ввод `Share` делят остаток `100 - sum(pinned)` поровну между незакреплёнными активными офферами с распределением `+1%` сверху вниз. При `sum(pinned) > 100%` или сумме активных долей `!= 100%` кнопка `PUSH TO KT` блокируется; при ошибке API черновик сохраняется; `CANCEL` откатывает правки. |
+| **Управление** | Поиск кампании по ID/имени/алиасу, `FETCH STREAMS FROM KT`, `VIEW IN KT`, переключатель `SHOW ALL OFFERS`. Все правки живут в локальном черновике (`draft`) с подсветкой изменений: `ADD` добавляет оффер, `REMOVE` переводит долю в `0%` со статусом `(removed)` и кнопкой `BRING BACK`. Ручной ввод `Share` сразу пересчитывает доли остальных незакреплённых активных офферов до `100%`, а кнопка `Pin` фиксирует выбранную долю при последующих `ADD`, `REMOVE`, `BRING BACK` и правках других офферов; остаток `100 - sum(fixed)` делится поровну с распределением `+1%` сверху вниз. Интерактивный пересчёт выполняется единым алгоритмом на frontend ([`frontend/src/utils/weights.ts`](frontend/src/utils/weights.ts)) для мгновенного отклика без сетевых задержек, а backend при `PUT /api/campaigns/{id}/streams/{stream_id}/offers` авторитетно валидирует итоговые инварианты (сумма активных долей `100%`, отсутствие дубликатов, существование офферов и схему `landings`). Во время `PUSH TO KT` редактирование потока блокируется, при ошибке API черновик сохраняется; `CANCEL` откатывает правки. |
 | **Журнал** | Просмотр истории создания кампаний и обновлений потоков из таблицы `operation_logs` в PostgreSQL. |
 
 ## Быстрый старт (Docker Compose)
@@ -119,10 +113,11 @@ npm install
 npm run dev
 ```
 
-Проверка типов и production-сборка:
+Проверка типов, unit-тесты пересчёта долей и production-сборка:
 
 ```bash
 cd frontend
+npm test
 npm run build
 ```
 
@@ -148,7 +143,6 @@ keitaro-campaign-manager/
 │   ├── alembic/                 # Миграции Alembic (operation_logs)
 │   ├── app/
 │   │   ├── routers/             # health, meta, campaigns, logs
-│   │   ├── services/            # Расчёт и округление весов офферов
 │   │   ├── config.py            # Конфигурация и нормализация KEITARO_BASE_URL
 │   │   ├── database.py          # Подключение SQLAlchemy и запись логов
 │   │   ├── keitaro.py           # Асинхронный клиент Keitaro Admin API
@@ -156,7 +150,7 @@ keitaro-campaign-manager/
 │   │   ├── models.py            # ORM-модель OperationLog
 │   │   └── schemas.py           # Pydantic-схемы API
 │   ├── tests/
-│   │   ├── unit/                # Unit-тесты конфига, клиента и весов
+│   │   ├── unit/                # Unit-тесты конфига и клиента Keitaro
 │   │   └── api/                 # API-тесты с подменённым клиентом Keitaro
 │   ├── Dockerfile
 │   └── pyproject.toml
@@ -166,7 +160,7 @@ keitaro-campaign-manager/
 │   │   ├── api/client.ts
 │   │   ├── components/          # CampaignCreator, CampaignEditor, OperationLogs, ThemeSwitcher, Logo
 │   │   ├── styles/              # tokens.css, global.css
-│   │   └── utils/weights.ts
+│   │   └── utils/               # weights.ts, weights.test.ts
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
