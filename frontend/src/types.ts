@@ -41,6 +41,10 @@ export interface MetaResponse {
     group_id: number | null;
     traffic_source_id: number | null;
   };
+  campaign_name_prefix?: string;
+  demo_mode?: boolean;
+  cached?: boolean;
+  cached_at?: string | null;
 }
 
 export interface CampaignSummary {
@@ -88,6 +92,7 @@ export interface StreamOfferItem {
   share: number;
   state: string;
   country?: string[];
+  removed_externally?: boolean;
 }
 
 export interface StreamFilterItem {
@@ -127,6 +132,31 @@ export interface UpdateStreamOffersResponse {
   stream_id: number;
   offers: StreamOfferShareInput[];
   updated: boolean;
+}
+
+export interface OfferDiffEntry {
+  offer_id: number;
+  name: string;
+  change: "added" | "removed" | "changed" | "unchanged";
+  before_share: number | null;
+  after_share: number | null;
+  before_state?: string | null;
+  after_state?: string | null;
+}
+
+export interface SnapshotOfferEntry {
+  offer_id: number;
+  name?: string;
+  share: number;
+  state?: string;
+}
+
+export interface PendingRollback {
+  logId: number;
+  campaignId: number;
+  streamId: number;
+  label: string;
+  offers: SnapshotOfferEntry[];
 }
 
 export interface OperationLogItem {

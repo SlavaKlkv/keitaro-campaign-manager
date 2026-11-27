@@ -14,12 +14,17 @@ router = APIRouter(prefix="/api/logs", tags=["logs"])
 @router.get("", response_model=list[OperationLogItem])
 def list_operation_logs(
     limit: int = Query(default=50, ge=1, le=200),
+    operation: str | None = Query(default=None, description="Фильтр по типу операции"),
+    resource_id: int | None = Query(default=None, description="Фильтр по ID ресурса"),
     db: Session = Depends(get_db),
 ) -> list[OperationLogItem]:
     """Возвращает последние записи журнала операций в обратном хронологическом порядке."""
-    rows = db.scalars(
-        select(OperationLog).order_by(desc(OperationLog.id)).limit(limit)
-    ).all()
+    stmt = select(OperationLog)
+    if operation:
+        stmt = stmt.where(OperationLog.operation == operation)
+    if resource_id is not None:
+        stmt = stmt.where(OperationLog.resource_id == resource_id)
+    rows = db.scalars(stmt.order_by(desc(OperationLog.id)).limit(limit)).all()
     return [
         OperationLogItem(
             id=row.id,

@@ -55,3 +55,18 @@ def test_build_keitaro_campaign_url(
 ) -> None:
     """Проверяет формирование ссылки VIEW IN KT и возврат None при пустом base_url."""
     assert build_keitaro_campaign_url(base_url, campaign_id) == expected
+
+
+def test_optional_defaults_and_safe_redirect_parsing() -> None:
+    """Пустые строки для DEFAULT_*_ID приводятся к None, а пустой SAFE_REDIRECT_URL — к google.com."""
+    settings = Settings(
+        default_domain_id="",  # type: ignore[arg-type]
+        default_group_id="  ",  # type: ignore[arg-type]
+        default_traffic_source_id="31",  # type: ignore[arg-type]
+        safe_redirect_url="  ",
+        _env_file=None,
+    )
+    assert settings.default_domain_id is None
+    assert settings.default_group_id is None
+    assert settings.default_traffic_source_id == 31
+    assert settings.safe_redirect_url == "https://google.com"

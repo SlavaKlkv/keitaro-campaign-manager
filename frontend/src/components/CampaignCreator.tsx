@@ -10,7 +10,7 @@ interface CampaignCreatorProps {
   meta: MetaResponse | null;
   metaLoading: boolean;
   metaError: string | null;
-  onReloadMeta: () => void;
+  onReloadMeta: (refresh?: boolean) => void;
   onCreated: (campaign: CampaignCreateResponse) => void;
   onOpenInEditor: (campaignId: number) => void;
 }
@@ -128,6 +128,8 @@ export function CampaignCreator({
     }
   };
 
+  const prefix = meta?.campaign_name_prefix ?? "";
+
   return (
     <div className="stack">
       <section className="card">
@@ -137,19 +139,26 @@ export function CampaignCreator({
             <h1 className="page-title">Новая кампания</h1>
             <p className="muted-copy">
               Создаёт кампанию с ротацией «По позиции» и моделью затрат CPC:
-              Flow 1 перехватывает выбранное гео и редиректит на{" "}
-              <code>https://google.com</code>, Flow 2 ведёт на выбранный оффер
-              (100%).
+              Flow 1 перехватывает выбранное гео и редиректит на безопасный
+              URL, Flow 2 ведёт на выбранный оффер (100%).
             </p>
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onReloadMeta}
-            disabled={metaLoading}
-          >
-            {metaLoading ? "Обновление…" : "Обновить справочники"}
-          </button>
+          <div className="btn-row">
+            {meta?.cached_at && (
+              <span className="meta-pill">
+                {meta.cached ? "Кэш" : "Обновлено"}:{" "}
+                {new Date(meta.cached_at).toLocaleTimeString("ru-RU")}
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onReloadMeta(true)}
+              disabled={metaLoading}
+            >
+              {metaLoading ? "Обновление…" : "Обновить справочники"}
+            </button>
+          </div>
         </div>
 
         {metaError && (
@@ -170,6 +179,17 @@ export function CampaignCreator({
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            {prefix.trim() && (
+              <span className="muted-copy">
+                Автопрефикс из конфигурации: <code>{prefix}</code>
+                {name.trim() && !name.trim().startsWith(prefix) && (
+                  <>
+                    {" "}
+                    → итоговое имя: <code>{`${prefix}${name.trim()}`}</code>
+                  </>
+                )}
+              </span>
+            )}
           </div>
 
           <div className="field">

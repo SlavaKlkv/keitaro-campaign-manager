@@ -53,6 +53,10 @@ class MetaResponse(BaseModel):
     offers: list[OfferItem]
     keitaro_base_url: str
     defaults: dict[str, int | None]
+    campaign_name_prefix: str = ""
+    demo_mode: bool = False
+    cached: bool = False
+    cached_at: datetime | None = None
 
 
 class CampaignSummary(BaseModel):
@@ -128,6 +132,7 @@ class StreamOfferItem(BaseModel):
     share: int
     state: str = "active"
     country: list[str] = Field(default_factory=list)
+    removed_externally: bool = False
 
 
 class StreamFilterItem(BaseModel):

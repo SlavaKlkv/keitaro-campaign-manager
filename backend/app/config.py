@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     keitaro_timeout_seconds: float = 20.0
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Надёжность, кэширование и настраиваемые дефолты (Этап 6)
+    keitaro_cache_ttl_seconds: int = 60
+    campaign_name_prefix: str = ""
+    safe_redirect_url: str = "https://google.com"
+    default_domain_id: int | None = None
+    default_group_id: int | None = None
+    default_traffic_source_id: int | None = None
+    demo_mode: bool = False
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
@@ -30,6 +39,21 @@ class Settings(BaseSettings):
         cleaned = value.strip().rstrip("/")
         cleaned = re.sub(r"(/admin_api(/v\d+)?|/admin)+$", "", cleaned, flags=re.IGNORECASE)
         return cleaned.rstrip("/")
+
+    @field_validator("safe_redirect_url")
+    @classmethod
+    def normalize_safe_redirect_url(cls, value: str) -> str:
+        """Подставляет https://google.com, если SAFE_REDIRECT_URL пустой."""
+        cleaned = value.strip()
+        return cleaned or "https://google.com"
+
+    @field_validator("default_domain_id", "default_group_id", "default_traffic_source_id", mode="before")
+    @classmethod
+    def parse_optional_int(cls, value: object) -> int | None:
+        """Преобразует пустую строку из .env в None для опциональных ID."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return int(value)  # type: ignore[arg-type]
 
     @property
     def cors_origins_list(self) -> list[str]:

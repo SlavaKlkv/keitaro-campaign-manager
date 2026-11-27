@@ -8,8 +8,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.cache import meta_cache
 from app.database import Base, get_db
+from app.demo_keitaro import reset_demo_keitaro_client
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def reset_runtime_caches() -> Generator[None, None, None]:
+    """Очищает in-memory кэши и demo-клиент между тестами."""
+    meta_cache.invalidate()
+    reset_demo_keitaro_client()
+    yield
+    meta_cache.invalidate()
 
 
 @pytest.fixture()

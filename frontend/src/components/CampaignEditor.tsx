@@ -5,6 +5,7 @@ import type {
   CampaignSummary,
   MetaResponse,
   OfferItem,
+  PendingRollback,
   StreamFilterItem,
   StreamInfo,
 } from "../types";
@@ -17,6 +18,8 @@ import {
 interface CampaignEditorProps {
   meta: MetaResponse | null;
   initialCampaignId: number | null;
+  pendingRollback?: PendingRollback | null;
+  onClearPendingRollback?: () => void;
 }
 
 interface StreamState {
@@ -26,6 +29,7 @@ interface StreamState {
   pushing: boolean;
   pushError: string | null;
   pushSuccess: string | null;
+  rollbackNotice: string | null;
   addQuery: string;
   selectedToAdd: OfferItem | null;
   addDropdownOpen: boolean;
@@ -55,13 +59,14 @@ function toDraftOffers(
   const current: DraftOffer[] = stream.offers.map((o) => ({
     offer_id: o.offer_id,
     name: o.name || `Offer #${o.offer_id}`,
-    share: o.share,
+    share: o.state === "active" ? o.share : 0,
     pinned: false,
     removed: o.state !== "active",
     country: o.country ?? [],
+    removedExternally: Boolean(o.removed_externally),
   }));
 
-  // Сохраняем ранее известные офферы, исчезнувшие из Keitaro, как (removed) для возможности BRING BACK
+  // Сохраняем ранее известные офферы в текущей сессии, исчезнувшие из Keitaro, как (removed)
   for (const prev of previousOffers) {
     if (!serverIds.has(prev.offer_id)) {
       current.push({
@@ -69,6 +74,7 @@ function toDraftOffers(
         share: 0,
         pinned: false,
         removed: true,
+        removedExternally: true,
       });
     }
   }
@@ -79,6 +85,8 @@ function toDraftOffers(
 export function CampaignEditor({
   meta,
   initialCampaignId,
+  pendingRollback = null,
+  onClearPendingRollback,
 }: CampaignEditorProps) {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
@@ -146,6 +154,7 @@ export function CampaignEditor({
             pushing: false,
             pushError: null,
             pushSuccess: null,
+            rollbackNotice: null,
             addQuery: "",
             selectedToAdd: null,
             addDropdownOpen: false,
@@ -169,6 +178,76 @@ export function CampaignEditor({
       void fetchStreamsFromKt(selectedCampaignId);
     }
   }, [selectedCampaignId, fetchStreamsFromKt]);
+
+  // Применяем откат к снимку из журнала в черновик соответствующего потока
+  useEffect(() => {
+    if (!pendingRollback || !streamsData) return;
+    if (streamsData.campaign.id !== pendingRollback.campaignId) return;
+    const targetStream = streamsData.streams.find(
+      (s) => s.id === pendingRollback.streamId
+    );
+    if (!targetStream) return;
+
+    setStreamStates((prev) => {
+      const st = prev[pendingRollback.streamId];
+      if (!st) return prev;
+
+      const snapshotActiveMap = new Map(
+        pendingRollback.offers
+          .filter((o) => o.state !== "disabled")
+          .map((o) => [o.offer_id, o])
+      );
+
+      const nextDraft: DraftOffer[] = [];
+      const seenIds = new Set<number>();
+
+      for (const item of pendingRollback.offers) {
+        seenIds.add(item.offer_id);
+        const active = item.state !== "disabled";
+        nextDraft.push({
+          offer_id: item.offer_id,
+          name: item.name || `Offer #${item.offer_id}`,
+          share: active ? item.share : 0,
+          pinned: false,
+          removed: !active,
+          country: [],
+        });
+      }
+
+      for (const baseItem of st.baseline) {
+        if (!seenIds.has(baseItem.offer_id) && !snapshotActiveMap.has(baseItem.offer_id)) {
+          nextDraft.push({
+            ...baseItem,
+            share: 0,
+            pinned: false,
+            removed: true,
+          });
+        }
+      }
+
+      const activeSum = nextDraft
+        .filter((o) => !o.removed)
+        .reduce((acc, o) => acc + o.share, 0);
+      const validationError =
+        activeSum !== 100
+          ? `Сумма долей снимка равна ${activeSum}% вместо 100%. Скорректируйте доли перед PUSH TO KT.`
+          : null;
+
+      return {
+        ...prev,
+        [pendingRollback.streamId]: {
+          ...st,
+          draft: nextDraft,
+          validationError,
+          pushError: null,
+          pushSuccess: null,
+          rollbackNotice: `В черновик загружен снимок из журнала #${pendingRollback.logId} (${pendingRollback.label}). Проверьте изменения и нажмите PUSH TO KT.`,
+        },
+      };
+    });
+
+    onClearPendingRollback?.();
+  }, [pendingRollback, streamsData, onClearPendingRollback]);
 
   const filteredCampaigns = useMemo(() => {
     const q = campaignFilter.trim().toLowerCase();
@@ -253,7 +332,9 @@ export function CampaignEditor({
   const handleBringBackOffer = (streamId: number, offerId: number) => {
     updateStreamDraft(streamId, (draft) => ({
       offers: draft.map((o) =>
-        o.offer_id === offerId ? { ...o, removed: false, pinned: false } : o
+        o.offer_id === offerId
+          ? { ...o, removed: false, pinned: false, removedExternally: false }
+          : o
       ),
     }));
   };
@@ -267,7 +348,7 @@ export function CampaignEditor({
       const nextOffers = existing
         ? draft.map((o) =>
             o.offer_id === picked.id
-              ? { ...o, removed: false, pinned: false }
+              ? { ...o, removed: false, pinned: false, removedExternally: false }
               : o
           )
         : [
@@ -304,6 +385,7 @@ export function CampaignEditor({
           validationError: null,
           pushError: null,
           pushSuccess: null,
+          rollbackNotice: null,
         },
       };
     });
@@ -348,6 +430,7 @@ export function CampaignEditor({
             ...st,
             baseline: sentSnapshot,
             pushing: false,
+            rollbackNotice: null,
             pushSuccess: "Изменения сохранены в Keitaro",
           },
         };
@@ -568,6 +651,11 @@ export function CampaignEditor({
               </div>
             ) : st ? (
               <div className="stack">
+                {st.rollbackNotice && (
+                  <div className="alert alert-warning" role="status">
+                    {st.rollbackNotice}
+                  </div>
+                )}
                 {st.validationError && (
                   <div className="alert alert-danger" role="alert">
                     {st.validationError}
@@ -617,6 +705,11 @@ export function CampaignEditor({
                                 <span>{offer.name}</span>
                                 {offer.removed && (
                                   <span className="tag">(removed)</span>
+                                )}
+                                {offer.removed && offer.removedExternally && (
+                                  <span className="status-badge status-warning">
+                                    удалён в KT
+                                  </span>
                                 )}
                               </div>
                             </td>

@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, JSON, String, Text
+from sqlalchemy import DateTime, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -26,4 +26,25 @@ class OperationLog(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
         index=True,
+    )
+
+
+class StreamOfferSnapshot(Base):
+    """Локальный снимок известных офферов потока для отслеживания внешних удалений в Keitaro."""
+
+    __tablename__ = "stream_offer_snapshots"
+    __table_args__ = (
+        UniqueConstraint("stream_id", "offer_id", name="uq_stream_offer_snapshots_stream_offer"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    campaign_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    stream_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    offer_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    offer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_share: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )

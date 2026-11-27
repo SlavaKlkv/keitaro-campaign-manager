@@ -5,6 +5,7 @@ export interface DraftOffer {
   pinned: boolean;
   removed: boolean;
   country: string[];
+  removedExternally?: boolean;
 }
 
 export interface RecalculationResult {

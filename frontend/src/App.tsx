@@ -5,13 +5,14 @@ import { CampaignEditor } from "./components/CampaignEditor";
 import { Logo } from "./components/Logo";
 import { OperationLogs } from "./components/OperationLogs";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
-import type { MetaResponse } from "./types";
+import type { MetaResponse, PendingRollback } from "./types";
 
 type ActiveTab = "creator" | "editor" | "logs";
 
 interface HealthState {
   status: string;
   database: string;
+  demo_mode?: boolean;
 }
 
 /** Главный компонент приложения с навигацией и загрузкой справочников Keitaro. */
@@ -20,6 +21,8 @@ export function App() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
     null
   );
+  const [pendingRollback, setPendingRollback] =
+    useState<PendingRollback | null>(null);
 
   const [health, setHealth] = useState<HealthState | null>(null);
   const [healthError, setHealthError] = useState(false);
@@ -38,11 +41,11 @@ export function App() {
       .catch(() => setHealthError(true));
   }, []);
 
-  const loadMeta = useCallback(async () => {
+  const loadMeta = useCallback(async (refresh = false) => {
     setMetaLoading(true);
     setMetaError(null);
     try {
-      const data = await api.getMeta();
+      const data = await api.getMeta(refresh);
       setMeta(data);
     } catch (err) {
       setMetaError(
@@ -56,9 +59,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void loadMeta();
+    void loadMeta(false);
   }, [loadMeta]);
 
+  const isDemoMode = Boolean(meta?.demo_mode || health?.demo_mode);
   const dotClass = healthError ? "err" : health?.status === "ok" ? "ok" : "";
   const statusLabel = healthError
     ? "API недоступен"
@@ -102,6 +106,14 @@ export function App() {
         </nav>
 
         <div className="topbar-right">
+          {isDemoMode && (
+            <span
+              className="status-badge status-warning"
+              title="Встроенный in-memory mock Keitaro (DEMO_MODE=true)"
+            >
+              DEMO MODE
+            </span>
+          )}
           <div className="health-badge" aria-live="polite">
             <span className={`health-dot ${dotClass}`} aria-hidden="true" />
             <span>{statusLabel}</span>
@@ -116,7 +128,7 @@ export function App() {
             meta={meta}
             metaLoading={metaLoading}
             metaError={metaError}
-            onReloadMeta={() => void loadMeta()}
+            onReloadMeta={(refresh = true) => void loadMeta(refresh)}
             onCreated={(created) => setSelectedCampaignId(created.id)}
             onOpenInEditor={(campaignId) => {
               setSelectedCampaignId(campaignId);
@@ -128,9 +140,19 @@ export function App() {
           <CampaignEditor
             meta={meta}
             initialCampaignId={selectedCampaignId}
+            pendingRollback={pendingRollback}
+            onClearPendingRollback={() => setPendingRollback(null)}
           />
         )}
-        {tab === "logs" && <OperationLogs />}
+        {tab === "logs" && (
+          <OperationLogs
+            onRollbackToSnapshot={(rollback) => {
+              setPendingRollback(rollback);
+              setSelectedCampaignId(rollback.campaignId);
+              setTab("editor");
+            }}
+          />
+        )}
       </main>
     </div>
   );

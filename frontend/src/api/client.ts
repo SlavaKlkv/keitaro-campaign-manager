@@ -52,8 +52,12 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 /** Клиент REST API собственного backend. */
 export const api = {
-  getHealth: () => requestJson<{ status: string; database: string }>("/health"),
-  getMeta: () => requestJson<MetaResponse>("/api/meta"),
+  getHealth: () =>
+    requestJson<{ status: string; database: string; demo_mode?: boolean }>(
+      "/health"
+    ),
+  getMeta: (refresh = false) =>
+    requestJson<MetaResponse>(refresh ? "/api/meta?refresh=true" : "/api/meta"),
   listCampaigns: () => requestJson<CampaignSummary[]>("/api/campaigns"),
   createCampaign: (payload: CampaignCreatePayload) =>
     requestJson<CampaignCreateResponse>("/api/campaigns", {
@@ -74,6 +78,10 @@ export const api = {
         body: JSON.stringify({ offers }),
       }
     ),
-  listLogs: (limit = 50) =>
-    requestJson<OperationLogItem[]>(`/api/logs?limit=${limit}`),
+  listLogs: (limit = 50, operation?: string, resourceId?: number) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (operation) params.set("operation", operation);
+    if (resourceId !== undefined) params.set("resource_id", String(resourceId));
+    return requestJson<OperationLogItem[]>(`/api/logs?${params.toString()}`);
+  },
 };
