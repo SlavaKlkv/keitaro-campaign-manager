@@ -1,15 +1,17 @@
-"""Запись демо-ролика работы Keitaro Campaign Manager в docs/assets/demo.mp4.
+"""Запись демо-ролика работы KT Studio в docs/assets/demo.mp4.
 
-Сценарий проигрывает живой пользовательский поток в браузере (1280x800):
-1. Переключение тем (тёмная → светлая → системная) как в эталоне ai_operations_agent.
-2. Создаватор кампаний: имя, гео, автокомплит оффера, создание кампании с 2 потоками.
-3. Редактор кампании: ADD, PUSH TO KT, REMOVE (0% / removed), SHOW ALL OFFERS,
-   BRING BACK, Pin / ручная доля Share (25% + 38% + 37%), CANCEL, FETCH STREAMS FROM KT.
-4. Журнал операций в PostgreSQL.
+Курсор и плавное ведение перенесены из ``ai_operations_agent/tools/record_demo.py``:
+- реальные формы указателя macOS (``default``, ``pointer``, ``text``, ``grabbing``)
+  переключаются по ``getComputedStyle(elementFromPoint(x, y)).cursor``;
+- движение с кубическим ease-out и удержанием нажатия, человеческий набор текста
+  и плавная прокрутка колесом.
 """
 
 from __future__ import annotations
 
+import base64
+import json
+import math
 import re
 import shutil
 import subprocess
@@ -17,92 +19,246 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 from playwright.sync_api import Locator, Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
+CURSOR_DIR = ROOT / "docs" / "assets" / "cursor-shapes"
 OUTPUT_MP4 = ROOT / "docs" / "assets" / "demo.mp4"
 BASE_URL = "http://localhost:5173"
 API_URL = "http://localhost:8000"
 
 VIEWPORT = {"width": 1280, "height": 800}
 
-# Векторный курсор поверх страницы (записывается страница без системного курсора ОС)
-CURSOR_INIT_JS = """
-(() => {
-  const initCursor = () => {
-    if (document.getElementById('__demo_cursor')) return;
-    const el = document.createElement('div');
-    el.id = '__demo_cursor';
-    Object.assign(el.style, {
-      position: 'fixed',
-      left: '0px',
-      top: '0px',
-      width: '20px',
-      height: '20px',
-      zIndex: '2147483647',
-      pointerEvents: 'none',
-      transform: 'translate(-100px, -100px)',
-      transition: 'transform 0.03s linear',
-      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.45))',
-    });
-    el.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none">
-      <path d="M4 3l14 7.2-6.2 1.8L9.6 18.5 4 3z" fill="#ffffff" stroke="#111317" stroke-width="1.6" stroke-linejoin="round"/>
-    </svg>`;
-    document.body.appendChild(el);
-    window.addEventListener('mousemove', (e) => {
-      el.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    }, { passive: true });
-  };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCursor);
-  } else {
-    initCursor();
+SCROLL_STEP = 16
+SCROLL_WAIT_MS = 24
+
+CURSOR_SCALE = 0.30
+CURSOR_SHAPES = {
+    "default": ("default.png", 0.12, 0.08),
+    "pointer": ("pointer.png", 0.35, 0.10),
+    "text": ("text.png", 0.50, 0.50),
+    "grabbing": ("grab.png", 0.50, 0.50),
+}
+
+
+@dataclass(frozen=True)
+class Point:
+    """Координаты указателя на экране."""
+
+    x: float
+    y: float
+
+
+def cursor_assets() -> dict[str, dict[str, object]]:
+    """Загружает вырезки форм курсора macOS в data URI."""
+    assets: dict[str, dict[str, object]] = {}
+    for name, (filename, hot_x, hot_y) in CURSOR_SHAPES.items():
+        path = CURSOR_DIR / filename
+        if not path.exists():
+            raise SystemExit(
+                f"Нет формы курсора {path}. Положите вырезки в docs/assets/cursor-shapes перед записью."
+            )
+        data = base64.b64encode(path.read_bytes()).decode()
+        assets[name] = {
+            "src": f"data:image/png;base64,{data}",
+            "hotX": hot_x,
+            "hotY": hot_y,
+        }
+    return assets
+
+
+CURSOR_LAYER_JS = """
+(assets) => {
+  const SCALE = __SCALE__;
+  const layer = document.createElement('div');
+  layer.id = '__demo_cursor';
+  Object.assign(layer.style, {
+    position: 'fixed',
+    left: '0px',
+    top: '0px',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+    willChange: 'transform',
+    transform: 'translate(-1000px, -1000px)',
+  });
+
+  const images = {};
+  for (const [name, info] of Object.entries(assets)) {
+    const img = new Image();
+    img.src = info.src;
+    Object.assign(img.style, { position: 'absolute', display: 'none' });
+    img.onload = () => {
+      const w = img.naturalWidth * SCALE;
+      const h = img.naturalHeight * SCALE;
+      img.style.width = w + 'px';
+      img.style.height = h + 'px';
+      img.style.left = -(w * info.hotX) + 'px';
+      img.style.top = -(h * info.hotY) + 'px';
+    };
+    images[name] = img;
+    layer.append(img);
   }
-})();
-"""
+
+  const show = (name) => {
+    for (const [key, img] of Object.entries(images)) {
+      img.style.display = key === name ? 'block' : 'none';
+    }
+  };
+  show('default');
+
+  const mount = () => {
+    const root = document.documentElement;
+    if (root && !layer.isConnected) root.append(layer);
+  };
+  mount();
+  document.addEventListener('DOMContentLoaded', mount);
+
+  window.__demoCursor = {
+    shape: 'default',
+    move(x, y) {
+      mount();
+      layer.style.transform = `translate(${x}px, ${y}px)`;
+      const el = document.elementFromPoint(x, y);
+      let shape = 'default';
+      if (el) {
+        const css = getComputedStyle(el).cursor;
+        if (css === 'pointer') shape = 'pointer';
+        else if (css === 'text') shape = 'text';
+        else if (css === 'grab' || css === 'grabbing') shape = 'grabbing';
+      }
+      this.shape = shape;
+      show(shape);
+    },
+  };
+
+  document.addEventListener(
+    'mousemove',
+    (event) => window.__demoCursor.move(event.clientX, event.clientY),
+    true,
+  );
+}
+""".replace("__SCALE__", str(CURSOR_SCALE))
 
 
-def move_and_click(
-    page: Page,
-    locator: Locator,
-    *,
-    move_steps: int = 12,
-    pause_before: float = 0.0,
-    pause_after: float = 0.28,
-) -> None:
-    """Плавно подводит курсор к элементу, делает опциональную паузу, нажимает и ждёт."""
-    locator.scroll_into_view_if_needed()
-    box = locator.bounding_box()
-    if box is None:
-        if pause_before > 0:
-            time.sleep(pause_before)
-        locator.click()
-    else:
-        target_x = box["x"] + box["width"] / 2
-        target_y = box["y"] + box["height"] / 2
-        page.mouse.move(target_x, target_y, steps=move_steps)
-        time.sleep(0.12 + pause_before)
-        page.mouse.click(target_x, target_y)
-    if pause_after > 0:
-        time.sleep(pause_after)
+class Recorder:
+    """Ведёт курсор, клавиатуру и прокрутку так, как это делает человек."""
 
+    def __init__(self, page: Page) -> None:
+        self.page = page
+        self.pos = Point(VIEWPORT["width"] * 0.5, VIEWPORT["height"] * 0.5)
 
-def type_human(
-    page: Page,
-    locator: Locator,
-    text: str,
-    *,
-    delay_ms: int = 42,
-    pause_after: float = 0.22,
-) -> None:
-    """Кликает по полю, выделяет текущее значение и набирает текст без лишних нулей."""
-    move_and_click(page, locator, pause_after=0.1)
-    locator.press("ControlOrMeta+a")
-    locator.press_sequentially(text, delay=delay_ms)
-    if pause_after > 0:
-        time.sleep(pause_after)
+    def move_to(self, x: float, y: float, duration: float = 0.28) -> None:
+        """Подводит курсор с кубическим замедлением у цели (ease-out)."""
+        start = self.pos
+        steps = max(5, int(duration / 0.022))
+        for i in range(1, steps + 1):
+            t = i / steps
+            eased = 1 - math.pow(1 - t, 3)
+            self.page.mouse.move(
+                start.x + (x - start.x) * eased,
+                start.y + (y - start.y) * eased,
+            )
+            self.page.wait_for_timeout(6)
+        self.pos = Point(x, y)
+
+    def pointer(self, x: float, y: float) -> None:
+        """Коротким движением ставит указатель на исходную точку."""
+        self.move_to(x, y, duration=0.18)
+
+    def _wheel_by(
+        self,
+        delta: float,
+        step: int = SCROLL_STEP,
+        wait: int = SCROLL_WAIT_MS,
+    ) -> None:
+        """Прокручивает окно равномерными шагами колеса."""
+        direction = 1 if delta > 0 else -1
+        remaining = abs(delta)
+        while remaining > 0.5:
+            amount = min(step, remaining)
+            self.page.mouse.wheel(0, direction * amount)
+            self.page.wait_for_timeout(wait)
+            remaining -= amount
+
+    def scroll_to(
+        self,
+        locator: Locator,
+        align: float = 0.5,
+        tolerance: float = 24,
+    ) -> None:
+        """Плавно подводит элемент к нужной позиции в кадре при необходимости."""
+        locator.wait_for(state="visible")
+        self.page.wait_for_timeout(40)
+        for _ in range(5):
+            box = locator.bounding_box()
+            if box is None:
+                return
+            if 40 <= box["y"] and box["y"] + box["height"] <= VIEWPORT["height"] - 40:
+                return
+            delta = box["y"] + box["height"] / 2 - VIEWPORT["height"] * align
+            if abs(delta) <= tolerance:
+                return
+            info = self.page.evaluate(
+                "() => ({y: window.scrollY,"
+                " max: Math.max(0, document.documentElement.scrollHeight - window.innerHeight)})"
+            )
+            reach = min(max(info["y"] + delta, 0.0), info["max"]) - info["y"]
+            if abs(reach) <= tolerance:
+                return
+            self._wheel_by(reach)
+            self.page.wait_for_timeout(100)
+
+    def hover(
+        self,
+        locator: Locator,
+        duration: float = 0.28,
+        settle: float = 0.18,
+    ) -> Locator:
+        """Плавно наводит курсор на элемент и выдерживает форму указателя."""
+        self.scroll_to(locator)
+        box = locator.bounding_box()
+        if box is None:
+            raise RuntimeError("Элемент не виден на странице")
+        self.move_to(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2, duration)
+        self.pause(settle)
+        return locator
+
+    def click(
+        self,
+        locator: Locator,
+        duration: float = 0.28,
+        settle: float = 0.18,
+        pause_after: float = 0.35,
+    ) -> None:
+        """Наводит курсор, выдерживает паузу, нажимает с естественным удержанием 70 мс."""
+        self.hover(locator, duration, settle)
+        self.page.mouse.down()
+        self.page.wait_for_timeout(70)
+        self.page.mouse.up()
+        if pause_after > 0:
+            self.pause(pause_after)
+
+    def type_text(
+        self,
+        locator: Locator,
+        text: str,
+        delay: float = 40,
+        pause_after: float = 0.35,
+    ) -> None:
+        """Ставит каретку кликом, выдерживает паузу и набирает текст посимвольно."""
+        self.click(locator, settle=0.20, pause_after=0.0)
+        self.page.wait_for_timeout(220)
+        self.page.keyboard.press("ControlOrMeta+a")
+        self.page.keyboard.type(text, delay=delay)
+        if pause_after > 0:
+            self.pause(pause_after)
+
+    def pause(self, seconds: float) -> None:
+        """Пауза для чтения результата действия."""
+        self.page.wait_for_timeout(int(seconds * 1000))
 
 
 def cleanup_campaign(campaign_id: int) -> None:
@@ -143,6 +299,9 @@ def convert_webm_to_mp4(webm_path: Path, mp4_path: Path) -> None:
 
 def main() -> None:
     """Выполняет сценарий записи демо-ролика и сохраняет его в docs/assets/demo.mp4."""
+    assets = cursor_assets()
+    init_cursor_script = f"({CURSOR_LAYER_JS})({json.dumps(assets)});"
+
     tmp_dir = Path(tempfile.mkdtemp(prefix="kcm-demo-"))
     created_campaign_id: int | None = None
 
@@ -155,49 +314,36 @@ def main() -> None:
                 record_video_dir=str(tmp_dir),
                 record_video_size=VIEWPORT,
             )
-            context.add_init_script(CURSOR_INIT_JS)
+            context.add_init_script(init_cursor_script)
             page = context.new_page()
+            rec = Recorder(page)
 
-            # 1. Знакомство с темами (1.0s → 1.0s → 0.6s, как в первом скринкасте)
+            # 1. Знакомство с темами (тайминги не меняем: 1.0s → 1.0s → 0.6s)
             page.goto(BASE_URL, wait_until="networkidle")
             page.get_by_text("API: ok · БД: ok").wait_for(timeout=15000)
             page.locator('button[type="submit"]:not(:disabled)').wait_for(timeout=20000)
-            page.mouse.move(640, 340, steps=10)
-            time.sleep(1.0)
+            rec.pointer(640, 340)
+            rec.pause(1.0)
 
-            move_and_click(
-                page,
-                page.locator('button[aria-label="Светлая тема"]'),
-                pause_after=1.0,
-            )
-            move_and_click(
-                page,
-                page.locator('button[aria-label="Системная тема"]'),
-                pause_after=0.6,
-            )
+            rec.click(page.locator('button[aria-label="Светлая тема"]'), pause_after=1.0)
+            rec.click(page.locator('button[aria-label="Системная тема"]'), pause_after=0.6)
 
-            # 2. Создаватор кампаний
-            type_human(page, page.locator("#cmp-name"), "Demo AU Campaign", delay_ms=48)
-            move_and_click(
-                page,
+            # 2. Создание кампаний: имя, переключение Geo ES (по умолчанию) → AU, оффер
+            rec.type_text(page.locator("#cmp-name"), "Demo AU Campaign", delay=40)
+            rec.click(
                 page.locator(".geo-chips button", has_text="AU"),
-                pause_after=0.35,
+                settle=0.22,
+                pause_after=0.5,
             )
 
-            offer_input = page.locator("#cmp-offer")
-            type_human(page, offer_input, "18001", delay_ms=65, pause_after=0.4)
-            page.locator(".autocomplete-list .autocomplete-item").first.wait_for(timeout=10000)
-            move_and_click(
-                page,
-                page.locator(".autocomplete-list .autocomplete-item").first,
-                pause_after=0.6,
-            )
+            rec.type_text(page.locator("#cmp-offer"), "18001", delay=48, pause_after=0.45)
+            first_offer = page.locator(".autocomplete-list .autocomplete-item").first
+            first_offer.wait_for(timeout=10000)
+            rec.click(first_offer, pause_after=0.6)
 
-            # Спокойная пауза перед созданием кампании
-            move_and_click(
-                page,
+            rec.click(
                 page.get_by_role("button", name="Create campaign"),
-                pause_before=0.4,
+                settle=0.25,
                 pause_after=0.2,
             )
 
@@ -206,110 +352,66 @@ def main() -> None:
             match = re.search(r"#(\d+)", result_heading.inner_text())
             if match:
                 created_campaign_id = int(match.group(1))
-            time.sleep(1.4)
+            rec.pause(1.5)
 
-            # Переход в редактор с небольшой паузой для чтения карточки
-            move_and_click(
-                page,
-                page.get_by_role("button", name="Открыть в редакторе"),
-                pause_before=0.3,
-                pause_after=0.45,
+            rec.click(
+                page.get_by_role("button", name="Настроить кампанию"),
+                settle=0.24,
+                pause_after=0.5,
             )
 
             # 3. Редактор кампании: ждём загрузки потоков (Flow 1 + Flow 2)
             page.get_by_text("Stream: Офферы").wait_for(timeout=20000)
-            time.sleep(1.0)
+            rec.pause(1.2)
 
-            # Добавляем 3 оффера (50/50 → 34/33/33 → 25×4)
+            # Добавляем 2 оффера (100% → 50/50 → 34/33/33) со спокойными паузами
             add_input = page.locator('input[aria-label="Поиск оффера для добавления в поток"]')
             add_btn = page.get_by_role("button", name="ADD", exact=True)
-            for offer_code in ("18002", "18003", "18004"):
-                type_human(page, add_input, offer_code, delay_ms=35, pause_after=0.15)
-                page.locator(".autocomplete-list .autocomplete-item").first.wait_for(timeout=5000)
-                move_and_click(
-                    page,
-                    page.locator(".autocomplete-list .autocomplete-item").first,
-                    move_steps=10,
-                    pause_after=0.1,
-                )
-                move_and_click(page, add_btn, move_steps=10, pause_after=0.3)
+            for offer_code in ("18002", "18003"):
+                rec.type_text(add_input, offer_code, delay=40, pause_after=0.3)
+                item = page.locator(".autocomplete-list .autocomplete-item").first
+                item.wait_for(timeout=5000)
+                rec.click(item, settle=0.18, pause_after=0.25)
+                rec.click(add_btn, settle=0.18, pause_after=0.8)
 
-            # Пауза перед первым PUSH TO KT (25% × 4)
-            move_and_click(
-                page,
-                page.get_by_role("button", name="PUSH TO KT"),
-                pause_before=0.6,
-                pause_after=0.15,
-            )
-            page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
-            time.sleep(0.8)
-
-            # Удаляем один оффер → 34% / 33% / 33% + 0% (removed) с BRING BACK
-            move_and_click(
-                page,
-                page.get_by_role("button", name="REMOVE", exact=True).nth(3),
-                pause_after=0.6,
-            )
-
-            # Переключатель SHOW ALL OFFERS (скрываем удалённый, затем возвращаем показ)
-            show_all_label = page.locator("label.checkbox-pill")
-            move_and_click(page, show_all_label, pause_after=0.5)
-            move_and_click(page, show_all_label, pause_after=0.5)
-
-            # BRING BACK + повторный REMOVE для показа восстановления и пересчёта
-            move_and_click(
-                page,
-                page.get_by_role("button", name="BRING BACK", exact=True).first,
-                pause_after=0.55,
-            )
-            move_and_click(
-                page,
-                page.get_by_role("button", name="REMOVE", exact=True).nth(3),
-                pause_after=0.55,
-            )
-
-            # Pin / ручное редактирование Share: 25% → активные пересчитываются в 38% и 37%
+            # Ввод Share 25% + явный клик по Pin → пересчёт 38% / 37% / 25%
             share_inputs = page.locator("input.share-input:not(:disabled)")
-            type_human(page, share_inputs.nth(2), "25", delay_ms=70, pause_after=0.7)
+            rec.type_text(share_inputs.nth(2), "25", delay=55, pause_after=0.55)
+            rec.click(
+                page.locator("button.pin-btn:not(:disabled)").nth(2),
+                settle=0.22,
+                pause_after=1.2,
+            )
 
-            # Пауза перед вторым PUSH TO KT (38% / 37% / 25%)
-            move_and_click(
-                page,
+            # PUSH TO KT (38% / 37% / 25%) и пауза на результате
+            rec.click(
                 page.get_by_role("button", name="PUSH TO KT"),
-                pause_before=0.6,
-                pause_after=0.15,
+                settle=0.25,
+                pause_after=0.2,
             )
             page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
-            time.sleep(0.8)
+            rec.pause(1.3)
 
-            # CANCEL (откат черновика) и FETCH STREAMS FROM KT
-            move_and_click(
-                page,
+            # REMOVE (0% / removed / BRING BACK) и откат через CANCEL
+            rec.click(
                 page.get_by_role("button", name="REMOVE", exact=True).nth(2),
-                pause_after=0.5,
+                settle=0.20,
+                pause_after=1.1,
             )
-            move_and_click(
-                page,
+            rec.click(
                 page.get_by_role("button", name="CANCEL", exact=True),
-                pause_before=0.35,
-                pause_after=0.55,
-            )
-            move_and_click(
-                page,
-                page.get_by_role("button", name="FETCH STREAMS FROM KT"),
-                pause_before=0.4,
-                pause_after=0.65,
+                settle=0.24,
+                pause_after=1.0,
             )
 
             # 4. Переключение на вкладку Журнал операций
-            move_and_click(
-                page,
+            rec.click(
                 page.locator("nav.nav-tabs button", has_text="Журнал"),
-                pause_before=0.45,
-                pause_after=0.3,
+                settle=0.24,
+                pause_after=0.35,
             )
             page.locator(".data-table tbody tr").first.wait_for(timeout=10000)
-            time.sleep(1.3)
+            rec.pause(1.8)
 
             video = page.video
             context.close()
