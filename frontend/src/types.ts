@@ -200,3 +200,91 @@ export interface OperationLogItem {
   details?: Record<string, unknown> | null;
   created_at: string;
 }
+
+export interface BulkCampaignCreateItem {
+  name: string;
+  country_code: string;
+  offer_id: number;
+  alias?: string | null;
+}
+
+export interface BulkCampaignResultItem {
+  index: number;
+  name: string;
+  country_code: string;
+  offer_id: number;
+  status: string;
+  campaign_id?: number | null;
+  tracking_url?: string | null;
+  keitaro_url?: string | null;
+  error?: string | null;
+}
+
+export interface BulkCampaignCreateResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkCampaignResultItem[];
+}
+
+export interface CloneGeoResultItem {
+  country_code: string;
+  status: string;
+  campaign_id?: number | null;
+  name?: string | null;
+  tracking_url?: string | null;
+  keitaro_url?: string | null;
+  error?: string | null;
+}
+
+export interface CloneGeosResponse {
+  source_campaign_id: number;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: CloneGeoResultItem[];
+}
+
+export interface BulkReplaceStreamPreview {
+  campaign_id: number;
+  campaign_name: string;
+  stream_id: number;
+  stream_name: string;
+  before: SnapshotOfferEntry[];
+  after: SnapshotOfferEntry[];
+  diff: OfferDiffEntry[];
+}
+
+export interface BulkReplaceStreamSkipped {
+  campaign_id: number;
+  campaign_name: string;
+  stream_id: number;
+  stream_name: string;
+  reason: string;
+}
+
+export interface BulkOfferReplacePreviewResponse {
+  source_offer_id: number;
+  target_offer_id: number | null;
+  affected_streams: BulkReplaceStreamPreview[];
+  skipped_streams: BulkReplaceStreamSkipped[];
+}
+
+export interface BulkOfferReplaceApplyResult {
+  campaign_id: number;
+  campaign_name: string;
+  stream_id: number;
+  stream_name: string;
+  status: string;
+  error?: string | null;
+}
+
+export interface BulkOfferReplaceApplyResponse {
+  source_offer_id: number;
+  target_offer_id: number | null;
+  total_streams: number;
+  succeeded: number;
+  failed: number;
+  results: BulkOfferReplaceApplyResult[];
+  skipped_streams: BulkReplaceStreamSkipped[];
+}

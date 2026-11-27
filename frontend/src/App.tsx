@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "./api/client";
+import { BulkOperations } from "./components/BulkOperations";
 import { CampaignCreator } from "./components/CampaignCreator";
 import { CampaignEditor } from "./components/CampaignEditor";
 import { Logo } from "./components/Logo";
@@ -7,7 +8,7 @@ import { OperationLogs } from "./components/OperationLogs";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import type { MetaResponse, PendingRollback } from "./types";
 
-type ActiveTab = "creator" | "editor" | "logs";
+type ActiveTab = "creator" | "editor" | "bulk" | "logs";
 
 interface HealthState {
   status: string;
@@ -98,6 +99,13 @@ export function App() {
           </button>
           <button
             type="button"
+            className={`nav-tab ${tab === "bulk" ? "active" : ""}`}
+            onClick={() => setTab("bulk")}
+          >
+            Массовые
+          </button>
+          <button
+            type="button"
             className={`nav-tab ${tab === "logs" ? "active" : ""}`}
             onClick={() => setTab("logs")}
           >
@@ -142,6 +150,15 @@ export function App() {
             initialCampaignId={selectedCampaignId}
             pendingRollback={pendingRollback}
             onClearPendingRollback={() => setPendingRollback(null)}
+          />
+        )}
+        {tab === "bulk" && (
+          <BulkOperations
+            meta={meta}
+            onOpenInEditor={(campaignId) => {
+              setSelectedCampaignId(campaignId);
+              setTab("editor");
+            }}
           />
         )}
         {tab === "logs" && (

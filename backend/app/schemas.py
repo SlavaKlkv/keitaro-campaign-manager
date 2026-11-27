@@ -254,3 +254,172 @@ class OperationLogItem(BaseModel):
     status: str
     details: dict[str, Any] | None = None
     created_at: datetime
+
+
+# --- Массовые операции (Этап 8) ---
+
+
+class BulkCampaignCreateItem(BaseModel):
+    """Одна строка пакета массового создания кампаний."""
+
+    name: str = Field(min_length=1, max_length=120)
+    country_code: str = Field(min_length=2, max_length=2, pattern="^[A-Za-z]{2}$")
+    offer_id: int = Field(gt=0)
+    alias: str | None = Field(default=None, min_length=1, max_length=80, pattern="^[a-zA-Z0-9_-]+$")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Название кампании не должно быть пустым")
+        return cleaned
+
+    @field_validator("country_code")
+    @classmethod
+    def normalize_country_code(cls, value: str) -> str:
+        return value.strip().upper()
+
+
+class BulkCampaignCreateRequest(BaseModel):
+    """Запрос на массовое создание кампаний."""
+
+    domain_id: int = Field(gt=0)
+    group_id: int = Field(gt=0)
+    traffic_source_id: int = Field(gt=0)
+    items: list[BulkCampaignCreateItem] = Field(min_length=1, max_length=100)
+
+
+class BulkCampaignResultItem(BaseModel):
+    """Результат обработки одной строки пакета создания кампаний."""
+
+    index: int
+    name: str
+    country_code: str
+    offer_id: int
+    status: str
+    campaign_id: int | None = None
+    tracking_url: str | None = None
+    keitaro_url: str | None = None
+    error: str | None = None
+
+
+class BulkCampaignCreateResponse(BaseModel):
+    """Итог массового создания кампаний."""
+
+    total: int
+    succeeded: int
+    failed: int
+    results: list[BulkCampaignResultItem]
+
+
+class CloneGeosRequest(BaseModel):
+    """Запрос на клонирование кампании на список GEO."""
+
+    country_codes: list[str] = Field(min_length=1, max_length=50)
+
+    @field_validator("country_codes")
+    @classmethod
+    def normalize_geos(cls, values: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for val in values:
+            code = val.strip().upper()
+            if len(code) != 2 or not code.isalpha():
+                raise ValueError(f"Некорректный GEO-код '{val}': требуется 2 латинские буквы")
+            if code not in seen:
+                seen.add(code)
+                cleaned.append(code)
+        if not cleaned:
+            raise ValueError("Укажите хотя бы один GEO-код")
+        return cleaned
+
+
+class CloneGeoResultItem(BaseModel):
+    """Результат клонирования кампании на одно GEO."""
+
+    country_code: str
+    status: str
+    campaign_id: int | None = None
+    name: str | None = None
+    tracking_url: str | None = None
+    keitaro_url: str | None = None
+    error: str | None = None
+
+
+class CloneGeosResponse(BaseModel):
+    """Итог клонирования кампании на пачку GEO."""
+
+    source_campaign_id: int
+    total: int
+    succeeded: int
+    failed: int
+    results: list[CloneGeoResultItem]
+
+
+class BulkOfferReplaceRequest(BaseModel):
+    """Запрос предпросмотра или применения массовой замены/отключения оффера."""
+
+    source_offer_id: int = Field(gt=0)
+    target_offer_id: int | None = Field(default=None, gt=0)
+    campaign_ids: list[int] | None = None
+
+    @model_validator(mode="after")
+    def validate_distinct_offers(self) -> "BulkOfferReplaceRequest":
+        if self.target_offer_id is not None and self.target_offer_id == self.source_offer_id:
+            raise ValueError("Целевой оффер должен отличаться от заменяемого")
+        return self
+
+
+class BulkReplaceStreamPreview(BaseModel):
+    """Предпросмотр изменений одного потока при массовой замене оффера."""
+
+    campaign_id: int
+    campaign_name: str
+    stream_id: int
+    stream_name: str
+    before: list[dict[str, Any]]
+    after: list[dict[str, Any]]
+    diff: list[dict[str, Any]]
+
+
+class BulkReplaceStreamSkipped(BaseModel):
+    """Поток, пропущенный при массовой замене (например, единственный активный оффер при отключении)."""
+
+    campaign_id: int
+    campaign_name: str
+    stream_id: int
+    stream_name: str
+    reason: str
+
+
+class BulkOfferReplacePreviewResponse(BaseModel):
+    """Предпросмотр массовой замены/отключения оффера."""
+
+    source_offer_id: int
+    target_offer_id: int | None
+    affected_streams: list[BulkReplaceStreamPreview]
+    skipped_streams: list[BulkReplaceStreamSkipped]
+
+
+class BulkOfferReplaceApplyResult(BaseModel):
+    """Результат обновления одного потока в ходе массовой замены."""
+
+    campaign_id: int
+    campaign_name: str
+    stream_id: int
+    stream_name: str
+    status: str
+    error: str | None = None
+
+
+class BulkOfferReplaceApplyResponse(BaseModel):
+    """Итог применения массовой замены/отключения оффера."""
+
+    source_offer_id: int
+    target_offer_id: int | None
+    total_streams: int
+    succeeded: int
+    failed: int
+    results: list[BulkOfferReplaceApplyResult]
+    skipped_streams: list[BulkReplaceStreamSkipped]

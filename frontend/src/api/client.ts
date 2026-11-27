@@ -1,10 +1,15 @@
 import type {
+  BulkCampaignCreateItem,
+  BulkCampaignCreateResponse,
+  BulkOfferReplaceApplyResponse,
+  BulkOfferReplacePreviewResponse,
   CampaignCreatePayload,
   CampaignCreateResponse,
   CampaignHealthSummary,
   CampaignStatsResponse,
   CampaignStreamsResponse,
   CampaignSummary,
+  CloneGeosResponse,
   MetaResponse,
   OperationLogItem,
   StatsPeriod,
@@ -93,4 +98,43 @@ export const api = {
     if (resourceId !== undefined) params.set("resource_id", String(resourceId));
     return requestJson<OperationLogItem[]>(`/api/logs?${params.toString()}`);
   },
+  bulkCreateCampaigns: (payload: {
+    domain_id: number;
+    group_id: number;
+    traffic_source_id: number;
+    items: BulkCampaignCreateItem[];
+  }) =>
+    requestJson<BulkCampaignCreateResponse>("/api/campaigns/bulk", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  cloneCampaignToGeos: (campaignId: number, country_codes: string[]) =>
+    requestJson<CloneGeosResponse>(`/api/campaigns/${campaignId}/clone-geos`, {
+      method: "POST",
+      body: JSON.stringify({ country_codes }),
+    }),
+  previewBulkOfferReplace: (payload: {
+    source_offer_id: number;
+    target_offer_id: number | null;
+    campaign_ids?: number[] | null;
+  }) =>
+    requestJson<BulkOfferReplacePreviewResponse>(
+      "/api/campaigns/bulk-offer-replace/preview",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
+  applyBulkOfferReplace: (payload: {
+    source_offer_id: number;
+    target_offer_id: number | null;
+    campaign_ids?: number[] | null;
+  }) =>
+    requestJson<BulkOfferReplaceApplyResponse>(
+      "/api/campaigns/bulk-offer-replace/apply",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
 };
