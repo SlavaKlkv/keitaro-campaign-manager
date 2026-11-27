@@ -15,7 +15,7 @@ from app.main import app
 
 
 @pytest.fixture(autouse=True)
-def reset_runtime_caches() -> Generator[None, None, None]:
+def reset_runtime_caches() -> Generator[None]:
     """Очищает in-memory кэши и demo-клиент между тестами."""
     meta_cache.invalidate()
     reset_demo_keitaro_client()
@@ -24,7 +24,7 @@ def reset_runtime_caches() -> Generator[None, None, None]:
 
 
 @pytest.fixture()
-def db_session() -> Generator[Session, None, None]:
+def db_session() -> Generator[Session]:
     """Изолированная in-memory SQLite БД на каждый тест для быстрой проверки без живого Postgres."""
     engine = create_engine(
         "sqlite:///:memory:",
@@ -40,10 +40,10 @@ def db_session() -> Generator[Session, None, None]:
 
 
 @pytest.fixture()
-def api_client(db_session: Session) -> Generator[TestClient, None, None]:
+def api_client(db_session: Session) -> Generator[TestClient]:
     """FastAPI TestClient с подменённой зависимостью get_db."""
 
-    def _override_get_db() -> Generator[Session, None, None]:
+    def _override_get_db() -> Generator[Session]:
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db

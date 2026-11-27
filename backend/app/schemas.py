@@ -220,7 +220,7 @@ class UpdateStreamOffersRequest(BaseModel):
     offers: list[StreamOfferShareInput] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
-    def validate_offers(self) -> "UpdateStreamOffersRequest":
+    def validate_offers(self) -> UpdateStreamOffersRequest:
         """Проверяет отсутствие дубликатов offer_id и сумму долей активных офферов == 100%."""
         ids = [item.offer_id for item in self.offers]
         if len(ids) != len(set(ids)):
@@ -365,7 +365,7 @@ class BulkOfferReplaceRequest(BaseModel):
     campaign_ids: list[int] | None = None
 
     @model_validator(mode="after")
-    def validate_distinct_offers(self) -> "BulkOfferReplaceRequest":
+    def validate_distinct_offers(self) -> BulkOfferReplaceRequest:
         if self.target_offer_id is not None and self.target_offer_id == self.source_offer_id:
             raise ValueError("Целевой оффер должен отличаться от заменяемого")
         return self

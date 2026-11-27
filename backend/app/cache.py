@@ -1,7 +1,7 @@
 """In-memory кэш справочников Keitaro с настраиваемым TTL."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import time
 from typing import Any
 
@@ -33,7 +33,7 @@ class MetaCache:
 
     def set(self, key: str, value: Any, ttl_seconds: int) -> datetime:
         """Сохраняет значение в кэш на указанный TTL и возвращает timestamp."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if ttl_seconds <= 0:
             self._entry = None
             return now

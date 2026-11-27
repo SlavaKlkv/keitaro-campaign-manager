@@ -3,6 +3,7 @@
 import json
 
 import httpx
+from pydantic import SecretStr
 import pytest
 
 from app.config import Settings
@@ -12,9 +13,9 @@ from app.keitaro import KeitaroClient, KeitaroError
 def _make_settings(base_url: str = "https://keitaro.example.com/admin") -> Settings:
     return Settings(
         keitaro_base_url=base_url,
-        keitaro_api_key="secret-test-key",
+        keitaro_api_key=SecretStr("secret-test-key"),
         keitaro_timeout_seconds=5.0,
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
     )
 
 
@@ -94,9 +95,7 @@ async def test_client_maps_auth_errors(status_code: int) -> None:
 
 async def test_client_extracts_upstream_error_message() -> None:
     """HTTP 422/500 из Keitaro сохраняет текст ошибки в исключении."""
-    transport = httpx.MockTransport(
-        lambda _: httpx.Response(422, json={"message": "Invalid offer_id"})
-    )
+    transport = httpx.MockTransport(lambda _: httpx.Response(422, json={"message": "Invalid offer_id"}))
     async with KeitaroClient(_make_settings(), transport=transport) as client:
         with pytest.raises(KeitaroError) as exc_info:
             await client.update_stream(10, {"offers": []})

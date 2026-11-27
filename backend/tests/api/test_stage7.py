@@ -113,7 +113,7 @@ def test_campaign_stats_and_health_endpoints(api_client: TestClient) -> None:
     """GET /stats и GET /health возвращают нормализованную статистику и сводку здоровья."""
     fake = FakeAnalyticsKeitaro()
 
-    async def _override() -> AsyncGenerator[FakeAnalyticsKeitaro, None]:
+    async def _override() -> AsyncGenerator[FakeAnalyticsKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override

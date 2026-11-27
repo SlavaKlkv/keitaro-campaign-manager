@@ -53,7 +53,9 @@ class Settings(BaseSettings):
         """Преобразует пустую строку из .env в None для опциональных ID."""
         if value is None or (isinstance(value, str) and not value.strip()):
             return None
-        return int(value)  # type: ignore[arg-type]
+        if isinstance(value, (int, float, str)):
+            return int(value)
+        raise ValueError(f"Ожидалось целое число или строка, получено {type(value).__name__}")
 
     @property
     def cors_origins_list(self) -> list[str]:

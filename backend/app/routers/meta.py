@@ -95,7 +95,7 @@ async def get_meta(
             group_id=int(r["group_id"]) if r.get("group_id") is not None else None,
             group=r.get("group"),
             state=r.get("state"),
-            country=r.get("country") if isinstance(r.get("country"), list) else [],
+            country=[str(c) for c in raw_c] if isinstance((raw_c := r.get("country")), list) else [],
         )
         for r in offer_rows
         if r.get("id") is not None

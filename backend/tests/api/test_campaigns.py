@@ -1,6 +1,6 @@
 """API-тесты справочников (/api/meta), создания кампаний и журнала операций."""
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -92,8 +92,8 @@ def fake_keitaro() -> FakeKeitaroClient:
 def client_with_fake_kt(
     api_client: TestClient,
     fake_keitaro: FakeKeitaroClient,
-) -> TestClient:
-    async def _override() -> AsyncGenerator[FakeKeitaroClient, None]:
+) -> Iterator[TestClient]:
+    async def _override() -> AsyncGenerator[FakeKeitaroClient]:
         yield fake_keitaro
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -181,7 +181,7 @@ def test_create_campaign_disables_campaign_on_stream_failure(
     """При ошибке создания второго потока кампания отключается и пишется error-лог."""
     broken = FakeKeitaroClient(fail_second_stream=True)
 
-    async def _override() -> AsyncGenerator[FakeKeitaroClient, None]:
+    async def _override() -> AsyncGenerator[FakeKeitaroClient]:
         yield broken
 
     app.dependency_overrides[get_keitaro_client] = _override

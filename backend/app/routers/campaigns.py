@@ -1,7 +1,7 @@
 """Роутер операций с кампаниями и потоками Keitaro."""
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import secrets
 from typing import Any
 
@@ -95,12 +95,10 @@ def upsert_stream_snapshots(
     offers: list[dict[str, Any]],
 ) -> None:
     """Обновляет локальный снимок известных офферов потока в PostgreSQL."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     existing = {
         row.offer_id: row
-        for row in db.scalars(
-            select(StreamOfferSnapshot).where(StreamOfferSnapshot.stream_id == stream_id)
-        ).all()
+        for row in db.scalars(select(StreamOfferSnapshot).where(StreamOfferSnapshot.stream_id == stream_id)).all()
     }
     for item in offers:
         oid = int(item["offer_id"])
@@ -140,11 +138,7 @@ def _to_campaign_summary(row: dict[str, Any], base_url: str | None) -> CampaignS
         domain=row.get("domain"),
         group_id=int(row["group_id"]) if row.get("group_id") is not None else None,
         group=row.get("group"),
-        traffic_source_id=(
-            int(row["traffic_source_id"])
-            if row.get("traffic_source_id") is not None
-            else None
-        ),
+        traffic_source_id=(int(row["traffic_source_id"]) if row.get("traffic_source_id") is not None else None),
         type=row.get("type"),
         cost_type=row.get("cost_type"),
         keitaro_url=build_keitaro_campaign_url(base_url, cid),
@@ -271,9 +265,7 @@ async def create_campaign(
             except KeitaroError:
                 pass
         detail = (
-            exc.message
-            if isinstance(exc, KeitaroError)
-            else "Неожиданный формат ответа Keitaro при создании кампании"
+            exc.message if isinstance(exc, KeitaroError) else "Неожиданный формат ответа Keitaro при создании кампании"
         )
         log_operation(
             db,
@@ -337,14 +329,10 @@ async def get_campaigns_health(
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
     offer_catalog: dict[int, dict[str, Any]] = {
-        int(row["id"]): row
-        for row in extract_rows(offers_raw)
-        if row.get("id") is not None
+        int(row["id"]): row for row in extract_rows(offers_raw) if row.get("id") is not None
     }
     campaigns = [
-        row
-        for row in extract_rows(campaigns_raw)
-        if row.get("id") is not None and row.get("state") != "deleted"
+        row for row in extract_rows(campaigns_raw) if row.get("id") is not None and row.get("state") != "deleted"
     ]
 
     semaphore = asyncio.Semaphore(8)
@@ -377,20 +365,15 @@ async def get_campaign_stats(
         "range": {"interval": interval_map[period], "timezone": "UTC"},
         "grouping": ["offer_id"],
         "metrics": ["clicks", "conversions", "cr", "epc", "revenue"],
-        "filters": [
-            {"name": "campaign_id", "operator": "EQUALS", "expression": [campaign_id]}
-        ],
+        "filters": [{"name": "campaign_id", "operator": "EQUALS", "expression": [campaign_id]}],
     }
     try:
         raw_report = await client.build_report(report_payload)
     except KeitaroError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
-    rows = (
-        raw_report.get("rows")
-        if isinstance(raw_report, dict) and isinstance(raw_report.get("rows"), list)
-        else extract_rows(raw_report)
-    )
+    rows_val = raw_report.get("rows") if isinstance(raw_report, dict) else None
+    rows: list[Any] = rows_val if isinstance(rows_val, list) else extract_rows(raw_report)
     items: list[OfferStatsItem] = []
     for row in rows:
         if not isinstance(row, dict):
@@ -400,7 +383,7 @@ async def get_campaign_stats(
             continue
         try:
             oid = int(raw_oid)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         clicks = int(float(row.get("clicks") or 0))
         conversions = int(float(row.get("conversions") or 0))
@@ -450,9 +433,7 @@ async def get_campaign_streams(
         raise HTTPException(status_code=404, detail="Кампания не найдена в Keitaro")
 
     offer_catalog: dict[int, dict[str, Any]] = {
-        int(row["id"]): row
-        for row in extract_rows(offers_raw)
-        if row.get("id") is not None
+        int(row["id"]): row for row in extract_rows(offers_raw) if row.get("id") is not None
     }
 
     raw_stream_rows = extract_rows(streams_raw)
@@ -464,7 +445,8 @@ async def get_campaign_streams(
             continue
         stream_id = int(row["id"])
 
-        raw_filters = row.get("filters") if isinstance(row.get("filters"), list) else []
+        raw_filters_val = row.get("filters")
+        raw_filters: list[Any] = raw_filters_val if isinstance(raw_filters_val, list) else []
         filters = [
             StreamFilterItem(
                 name=str(f.get("name", "")),
@@ -475,7 +457,8 @@ async def get_campaign_streams(
             if isinstance(f, dict)
         ]
 
-        raw_offers = row.get("offers") if isinstance(row.get("offers"), list) else []
+        raw_offers_val = row.get("offers")
+        raw_offers: list[Any] = raw_offers_val if isinstance(raw_offers_val, list) else []
         offers: list[StreamOfferItem] = []
         current_offer_dicts: list[dict[str, Any]] = []
         current_offer_ids: set[int] = set()
@@ -488,17 +471,14 @@ async def get_campaign_streams(
             offer_name = str(catalog_entry.get("name") or item.get("name") or f"Offer #{oid}")
             share = int(item.get("share") or 0)
             current_offer_dicts.append({"offer_id": oid, "name": offer_name, "share": share})
+            raw_country = catalog_entry.get("country")
             offers.append(
                 StreamOfferItem(
                     offer_id=oid,
                     name=offer_name,
                     share=share,
                     state=str(item.get("state") or "active"),
-                    country=(
-                        catalog_entry.get("country")
-                        if isinstance(catalog_entry.get("country"), list)
-                        else []
-                    ),
+                    country=[str(c) for c in raw_country] if isinstance(raw_country, list) else [],
                     removed_externally=False,
                 )
             )
@@ -513,17 +493,14 @@ async def get_campaign_streams(
             for snap in known_snapshots:
                 if snap.offer_id not in current_offer_ids:
                     catalog_entry = offer_catalog.get(snap.offer_id, {})
+                    raw_country = catalog_entry.get("country")
                     offers.append(
                         StreamOfferItem(
                             offer_id=snap.offer_id,
                             name=str(catalog_entry.get("name") or snap.offer_name or f"Offer #{snap.offer_id}"),
                             share=0,
                             state="removed",
-                            country=(
-                                catalog_entry.get("country")
-                                if isinstance(catalog_entry.get("country"), list)
-                                else []
-                            ),
+                            country=([str(c) for c in raw_country] if isinstance(raw_country, list) else []),
                             removed_externally=True,
                         )
                     )
@@ -594,9 +571,7 @@ async def update_stream_offers(
         )
 
     offer_catalog: dict[int, dict[str, Any]] = {
-        int(row["id"]): row
-        for row in extract_rows(offers_raw)
-        if row.get("id") is not None
+        int(row["id"]): row for row in extract_rows(offers_raw) if row.get("id") is not None
     }
     unknown_ids = [item.offer_id for item in payload.offers if item.offer_id not in offer_catalog]
     if unknown_ids:
@@ -605,6 +580,8 @@ async def update_stream_offers(
             detail=f"Неизвестные offer_id: {unknown_ids}",
         )
 
+    raw_stream_offers = stream.get("offers")
+    stream_offers: list[Any] = raw_stream_offers if isinstance(raw_stream_offers, list) else []
     before_offers: list[dict[str, Any]] = [
         {
             "offer_id": int(item["offer_id"]),
@@ -616,7 +593,7 @@ async def update_stream_offers(
             "share": int(item.get("share") or 0),
             "state": str(item.get("state") or "active"),
         }
-        for item in (stream.get("offers") if isinstance(stream.get("offers"), list) else [])
+        for item in stream_offers
         if isinstance(item, dict) and item.get("offer_id") is not None
     ]
 
@@ -631,10 +608,7 @@ async def update_stream_offers(
     ]
     diff = compute_offer_diff(before_offers, after_offers)
 
-    keitaro_offers = [
-        {"offer_id": item.offer_id, "share": item.share, "state": item.state}
-        for item in payload.offers
-    ]
+    keitaro_offers = [{"offer_id": item.offer_id, "share": item.share, "state": item.state} for item in payload.offers]
     try:
         updated = await client.update_stream(stream_id, {"offers": keitaro_offers})
     except KeitaroError as exc:

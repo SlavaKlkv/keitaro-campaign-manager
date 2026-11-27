@@ -20,7 +20,8 @@ def audit_campaign_streams(
 
         stream_id = int(stream["id"])
         stream_name = str(stream.get("name") or f"Stream #{stream_id}")
-        raw_offers = stream.get("offers") if isinstance(stream.get("offers"), list) else []
+        raw_offers_val = stream.get("offers")
+        raw_offers: list[Any] = raw_offers_val if isinstance(raw_offers_val, list) else []
 
         seen_ids: set[int] = set()
         duplicate_ids: set[int] = set()

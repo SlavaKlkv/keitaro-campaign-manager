@@ -57,7 +57,7 @@ class KeitaroClient:
             transport=transport,
         )
 
-    async def __aenter__(self) -> "KeitaroClient":
+    async def __aenter__(self) -> KeitaroClient:
         return self
 
     async def __aexit__(self, *args: object) -> None:

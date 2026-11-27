@@ -9,7 +9,7 @@ from app.demo_keitaro import DemoKeitaroClient, get_demo_keitaro_client
 from app.keitaro import KeitaroClient
 
 
-async def get_keitaro_client() -> AsyncGenerator[KeitaroClient | DemoKeitaroClient, None]:
+async def get_keitaro_client() -> AsyncGenerator[KeitaroClient | DemoKeitaroClient]:
     """Создаёт и корректно закрывает клиент Keitaro (или DemoKeitaroClient в DEMO_MODE)."""
     settings = get_settings()
     if settings.demo_mode:

@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from app.cache import meta_cache
 from app.config import Settings, get_settings
 from app.deps import get_keitaro_client
 from app.main import app
-from app.models import OperationLog, StreamOfferSnapshot
+from app.models import StreamOfferSnapshot
 
 
 class CountingFakeKeitaro:
@@ -89,7 +90,7 @@ def test_meta_ttl_cache_and_force_refresh(api_client: TestClient) -> None:
     """GET /api/meta кэширует ответ по TTL и обновляется при ?refresh=true."""
     fake = CountingFakeKeitaro()
 
-    async def _override() -> AsyncGenerator[CountingFakeKeitaro, None]:
+    async def _override() -> AsyncGenerator[CountingFakeKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -120,20 +121,20 @@ def test_prefix_safe_redirect_and_configured_defaults(
     """CAMPAIGN_NAME_PREFIX, SAFE_REDIRECT_URL и DEFAULT_*_ID применяются к /api/meta и созданию кампании."""
     custom_settings = Settings(
         keitaro_base_url="https://keitaro.example.com",
-        keitaro_api_key="test-key",
+        keitaro_api_key=SecretStr("test-key"),
         campaign_name_prefix="test_ivanov_",
         safe_redirect_url="https://safe.example.org/landing",
         default_domain_id=12,
         default_group_id=22,
         default_traffic_source_id=32,
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
     )
     monkeypatch.setattr("app.routers.meta.get_settings", lambda: custom_settings)
     monkeypatch.setattr("app.routers.campaigns.get_settings", lambda: custom_settings)
 
     fake = CountingFakeKeitaro()
 
-    async def _override() -> AsyncGenerator[CountingFakeKeitaro, None]:
+    async def _override() -> AsyncGenerator[CountingFakeKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -174,7 +175,7 @@ def test_external_offer_removal_detected_on_fetch(
     """Оффер, удалённый напрямую в Keitaro, возвращается со статусом removed (0%) и removed_externally=True."""
     fake = CountingFakeKeitaro()
 
-    async def _override() -> AsyncGenerator[CountingFakeKeitaro, None]:
+    async def _override() -> AsyncGenerator[CountingFakeKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -208,7 +209,7 @@ def test_update_stream_offers_records_before_after_diff_and_log_filters(
     """PUSH TO KT записывает diff «было → стало» в operation_logs, а GET /api/logs поддерживает фильтры."""
     fake = CountingFakeKeitaro()
 
-    async def _override() -> AsyncGenerator[CountingFakeKeitaro, None]:
+    async def _override() -> AsyncGenerator[CountingFakeKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -251,9 +252,9 @@ def test_demo_mode_works_without_keitaro_api_key(
     """При DEMO_MODE=true API работает без KEITARO_API_KEY, включая создание и редактирование."""
     demo_settings = Settings(
         keitaro_base_url="",
-        keitaro_api_key="",
+        keitaro_api_key=SecretStr(""),
         demo_mode=True,
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
     )
     monkeypatch.setattr("app.deps.get_settings", lambda: demo_settings)
     monkeypatch.setattr("app.routers.meta.get_settings", lambda: demo_settings)

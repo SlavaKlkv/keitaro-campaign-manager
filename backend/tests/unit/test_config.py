@@ -20,7 +20,7 @@ from app.keitaro_helpers import build_keitaro_campaign_url
 )
 def test_normalize_keitaro_base_url(raw_url: str, expected: str) -> None:
     """Проверяет удаление хвостовых путей /admin и /admin_api(/v1)."""
-    settings = Settings(keitaro_base_url=raw_url, _env_file=None)
+    settings = Settings(keitaro_base_url=raw_url, _env_file=None)  # type: ignore[call-arg]
     assert settings.keitaro_base_url == expected
 
 
@@ -28,7 +28,7 @@ def test_cors_origins_list_parsing() -> None:
     """Проверяет разбор списка CORS origin из строки."""
     settings = Settings(
         cors_origins="http://localhost:5173, http://127.0.0.1:5173 , ",
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
     )
     assert settings.cors_origins_list == [
         "http://localhost:5173",
@@ -64,7 +64,7 @@ def test_optional_defaults_and_safe_redirect_parsing() -> None:
         default_group_id="  ",  # type: ignore[arg-type]
         default_traffic_source_id="31",  # type: ignore[arg-type]
         safe_redirect_url="  ",
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
     )
     assert settings.default_domain_id is None
     assert settings.default_group_id is None

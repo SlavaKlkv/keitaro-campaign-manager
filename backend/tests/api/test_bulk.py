@@ -142,7 +142,7 @@ def test_bulk_create_handles_valid_and_invalid_rows_independently(
     """POST /api/campaigns/bulk создаёт валидные строки и фиксирует ошибки по невалидным."""
     fake = FakeBulkKeitaro()
 
-    async def _override() -> AsyncGenerator[FakeBulkKeitaro, None]:
+    async def _override() -> AsyncGenerator[FakeBulkKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -182,7 +182,7 @@ def test_clone_campaign_to_geos_replaces_country_filter_and_copies_offers(
     """POST /api/campaigns/{id}/clone-geos клонирует кампанию, заменяя GEO в Flow 1."""
     fake = FakeBulkKeitaro()
 
-    async def _override() -> AsyncGenerator[FakeBulkKeitaro, None]:
+    async def _override() -> AsyncGenerator[FakeBulkKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -217,7 +217,7 @@ def test_bulk_offer_replace_preview_and_apply_for_replace_and_disable(
     """Предпросмотр и применение замены/отключения оффера пересчитывают доли до 100% и пишут журнал."""
     fake = FakeBulkKeitaro()
 
-    async def _override() -> AsyncGenerator[FakeBulkKeitaro, None]:
+    async def _override() -> AsyncGenerator[FakeBulkKeitaro]:
         yield fake
 
     app.dependency_overrides[get_keitaro_client] = _override

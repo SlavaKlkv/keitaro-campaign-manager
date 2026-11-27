@@ -100,9 +100,7 @@ def _compute_stream_replacement(
         after = _redistribute_shares_to_100(remaining)
         return before, after, None
 
-    target_name = str(
-        offer_catalog.get(target_offer_id, {}).get("name") or f"Offer #{target_offer_id}"
-    )
+    target_name = str(offer_catalog.get(target_offer_id, {}).get("name") or f"Offer #{target_offer_id}")
     existing_target = next((o for o in active_before if o["offer_id"] == target_offer_id), None)
     if existing_target is not None:
         merged: list[dict[str, Any]] = []
@@ -507,7 +505,8 @@ async def _collect_replace_plan(
                 continue
             sid = int(stream["id"])
             sname = str(stream.get("name") or f"Stream #{sid}")
-            raw_offers = stream.get("offers") if isinstance(stream.get("offers"), list) else []
+            raw_offers_val = stream.get("offers")
+            raw_offers: list[dict[str, Any]] = raw_offers_val if isinstance(raw_offers_val, list) else []
             before, after, skip_reason = _compute_stream_replacement(
                 raw_offers,
                 source_offer_id=payload.source_offer_id,
@@ -567,8 +566,7 @@ async def apply_bulk_offer_replace(
 
     for item in affected:
         keitaro_offers = [
-            {"offer_id": int(o["offer_id"]), "share": int(o["share"]), "state": str(o["state"])}
-            for o in item.after
+            {"offer_id": int(o["offer_id"]), "share": int(o["share"]), "state": str(o["state"])} for o in item.after
         ]
         try:
             await client.update_stream(item.stream_id, {"offers": keitaro_offers})

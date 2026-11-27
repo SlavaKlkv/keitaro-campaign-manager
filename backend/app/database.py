@@ -27,7 +27,7 @@ engine = build_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Dependency FastAPI, выдающий сессию БД на время обработки запроса."""
     with SessionLocal() as session:
         yield session

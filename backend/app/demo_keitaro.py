@@ -29,13 +29,62 @@ class DemoKeitaroClient:
             {"id": 32, "name": "TikTok Ads", "template_name": "tiktok", "state": "active"},
         ]
         self._offers: list[dict[str, Any]] = [
-            {"id": 18001, "name": "18001 Oxys Cream RO", "group_id": 1, "group": "Nutra", "state": "active", "country": ["RO"]},
-            {"id": 18002, "name": "18002 Miaflow RO", "group_id": 1, "group": "Nutra", "state": "active", "country": ["RO"]},
-            {"id": 18003, "name": "18003 FitoMishki CL", "group_id": 1, "group": "Nutra", "state": "active", "country": ["CL"]},
-            {"id": 18004, "name": "18004 GlucoPRO DE", "group_id": 1, "group": "Nutra", "state": "active", "country": ["DE"]},
-            {"id": 18005, "name": "18005 CardioMax ES", "group_id": 1, "group": "Nutra", "state": "active", "country": ["ES"]},
-            {"id": 18006, "name": "18006 SlimDrop AU", "group_id": 2, "group": "Beauty", "state": "active", "country": ["AU"]},
-            {"id": 18007, "name": "18007 Legacy Archived Offer", "group_id": 2, "group": "Beauty", "state": "archived", "country": ["PL"]},
+            {
+                "id": 18001,
+                "name": "18001 Oxys Cream RO",
+                "group_id": 1,
+                "group": "Nutra",
+                "state": "active",
+                "country": ["RO"],
+            },
+            {
+                "id": 18002,
+                "name": "18002 Miaflow RO",
+                "group_id": 1,
+                "group": "Nutra",
+                "state": "active",
+                "country": ["RO"],
+            },
+            {
+                "id": 18003,
+                "name": "18003 FitoMishki CL",
+                "group_id": 1,
+                "group": "Nutra",
+                "state": "active",
+                "country": ["CL"],
+            },
+            {
+                "id": 18004,
+                "name": "18004 GlucoPRO DE",
+                "group_id": 1,
+                "group": "Nutra",
+                "state": "active",
+                "country": ["DE"],
+            },
+            {
+                "id": 18005,
+                "name": "18005 CardioMax ES",
+                "group_id": 1,
+                "group": "Nutra",
+                "state": "active",
+                "country": ["ES"],
+            },
+            {
+                "id": 18006,
+                "name": "18006 SlimDrop AU",
+                "group_id": 2,
+                "group": "Beauty",
+                "state": "active",
+                "country": ["AU"],
+            },
+            {
+                "id": 18007,
+                "name": "18007 Legacy Archived Offer",
+                "group_id": 2,
+                "group": "Beauty",
+                "state": "archived",
+                "country": ["PL"],
+            },
         ]
 
         self._campaigns: dict[int, dict[str, Any]] = {
@@ -176,7 +225,7 @@ class DemoKeitaroClient:
             18007: {"clicks": 12, "conversions": 0, "revenue": 0.0},
         }
 
-    async def __aenter__(self) -> "DemoKeitaroClient":
+    async def __aenter__(self) -> DemoKeitaroClient:
         return self
 
     async def __aexit__(self, *args: object) -> None:

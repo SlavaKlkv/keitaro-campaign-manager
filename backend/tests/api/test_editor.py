@@ -1,6 +1,6 @@
 """API-тесты редактора кампаний: загрузка потоков и PUSH TO KT."""
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -92,8 +92,8 @@ def fake_editor_kt() -> FakeEditorKeitaroClient:
 def editor_client(
     api_client: TestClient,
     fake_editor_kt: FakeEditorKeitaroClient,
-) -> TestClient:
-    async def _override() -> AsyncGenerator[FakeEditorKeitaroClient, None]:
+) -> Iterator[TestClient]:
+    async def _override() -> AsyncGenerator[FakeEditorKeitaroClient]:
         yield fake_editor_kt
 
     app.dependency_overrides[get_keitaro_client] = _override
@@ -170,7 +170,7 @@ def test_update_stream_offers_logs_error_when_keitaro_fails(
     """При ошибке Keitaro API возвращается 502 и фиксируется error-запись в журнале."""
     broken = FakeEditorKeitaroClient(fail_update=True)
 
-    async def _override() -> AsyncGenerator[FakeEditorKeitaroClient, None]:
+    async def _override() -> AsyncGenerator[FakeEditorKeitaroClient]:
         yield broken
 
     app.dependency_overrides[get_keitaro_client] = _override
