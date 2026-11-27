@@ -202,3 +202,9 @@ class KeitaroClient:
     async def list_traffic_sources(self) -> Any:
         """Возвращает список источников трафика."""
         return await self._request("GET", "traffic_sources")
+
+    # --- Reports ---
+
+    async def build_report(self, payload: dict[str, Any]) -> Any:
+        """Строит аналитический отчёт Keitaro (POST /report/build)."""
+        return await self._request("POST", "report/build", json_body=payload)

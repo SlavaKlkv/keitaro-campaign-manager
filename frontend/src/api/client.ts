@@ -1,10 +1,13 @@
 import type {
   CampaignCreatePayload,
   CampaignCreateResponse,
+  CampaignHealthSummary,
+  CampaignStatsResponse,
   CampaignStreamsResponse,
   CampaignSummary,
   MetaResponse,
   OperationLogItem,
+  StatsPeriod,
   StreamOfferShareInput,
   UpdateStreamOffersResponse,
 } from "../types";
@@ -66,6 +69,12 @@ export const api = {
     }),
   getCampaignStreams: (campaignId: number) =>
     requestJson<CampaignStreamsResponse>(`/api/campaigns/${campaignId}/streams`),
+  getCampaignsHealth: () =>
+    requestJson<Record<string, CampaignHealthSummary>>("/api/campaigns/health"),
+  getCampaignStats: (campaignId: number, period: StatsPeriod = "7d") =>
+    requestJson<CampaignStatsResponse>(
+      `/api/campaigns/${campaignId}/stats?period=${period}`
+    ),
   updateStreamOffers: (
     campaignId: number,
     streamId: number,

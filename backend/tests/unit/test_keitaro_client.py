@@ -54,6 +54,7 @@ async def test_client_sends_api_key_and_hits_all_endpoints() -> None:
         await client.list_groups("campaigns")
         await client.list_domains()
         await client.list_traffic_sources()
+        await client.build_report({"range": {"interval": "7 days"}})
 
     assert all(api_key == "secret-test-key" for _, _, api_key, _ in recorded)
     assert [(m, p) for m, p, _, _ in recorded] == [
@@ -76,6 +77,7 @@ async def test_client_sends_api_key_and_hits_all_endpoints() -> None:
         ("GET", "/admin_api/v1/groups?type=campaigns"),
         ("GET", "/admin_api/v1/domains"),
         ("GET", "/admin_api/v1/traffic_sources"),
+        ("POST", "/admin_api/v1/report/build"),
     ]
 
 

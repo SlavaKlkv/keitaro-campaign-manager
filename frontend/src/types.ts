@@ -116,9 +116,40 @@ export interface StreamInfo {
   offers: StreamOfferItem[];
 }
 
+export interface HealthIssue {
+  code: string;
+  severity: "error" | "warning" | string;
+  stream_id?: number | null;
+  message: string;
+}
+
+export interface CampaignHealthSummary {
+  status: "ok" | "warning" | "error" | string;
+  issues: HealthIssue[];
+}
+
 export interface CampaignStreamsResponse {
   campaign: CampaignSummary;
   streams: StreamInfo[];
+  health?: CampaignHealthSummary | null;
+}
+
+export type StatsPeriod = "today" | "7d" | "30d";
+
+export interface OfferStatsItem {
+  offer_id: number;
+  offer_name?: string | null;
+  clicks: number;
+  conversions: number;
+  cr: number;
+  epc: number;
+  revenue: number;
+}
+
+export interface CampaignStatsResponse {
+  campaign_id: number;
+  period: StatsPeriod;
+  offers: OfferStatsItem[];
 }
 
 export interface StreamOfferShareInput {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   isStreamDraftDirty,
+  rebalanceByPerformance,
   recalculateDraftShares,
   type DraftOffer,
+  type OfferPerformanceMetric,
 } from "./weights";
 
 /** Хелпер для создания строки черновика оффера в тестах. */
@@ -167,5 +169,69 @@ describe("isStreamDraftDirty", () => {
 
     const addedOffer = [makeOffer(1, 34), makeOffer(2, 33), makeOffer(3, 33)];
     expect(isStreamDraftDirty(addedOffer, baseline)).toBe(true);
+  });
+});
+
+function makeMetric(
+  offer_id: number,
+  clicks: number,
+  epc: number,
+  cr = 0
+): OfferPerformanceMetric {
+  return {
+    offer_id,
+    clicks,
+    conversions: Math.round((clicks * cr) / 100),
+    cr,
+    epc,
+    revenue: Number((clicks * epc).toFixed(2)),
+  };
+}
+
+describe("rebalanceByPerformance", () => {
+  it("распределяет доли пропорционально EPC, сохраняя pinned и отсекая шум < minClicks", () => {
+    const res = rebalanceByPerformance(
+      [
+        makeOffer(1, 40),
+        makeOffer(2, 30),
+        makeOffer(3, 20, { pinned: true }),
+        makeOffer(4, 10),
+      ],
+      {
+        1: makeMetric(1, 300, 1.5),
+        2: makeMetric(2, 250, 0.5),
+        3: makeMetric(3, 400, 2.0),
+        4: makeMetric(4, 5, 9.0), // шум ниже minClicks=50
+      },
+      50
+    );
+    expect(res.error).toBeNull();
+    // Остаток 80% делится между #1 (1.5 -> 60%) и #2 (0.5 -> 20%), #3 закреплён (20%), #4 шум (0%)
+    expect(res.offers.map((o) => o.share)).toEqual([60, 20, 20, 0]);
+  });
+
+  it("делит поровну при нулевых EPC и CR у допущенных офферов", () => {
+    const res = rebalanceByPerformance(
+      [makeOffer(1, 80), makeOffer(2, 20)],
+      {
+        1: makeMetric(1, 100, 0, 0),
+        2: makeMetric(2, 120, 0, 0),
+      },
+      20
+    );
+    expect(res.error).toBeNull();
+    expect(res.offers.map((o) => o.share)).toEqual([50, 50]);
+  });
+
+  it("возвращает ошибку, если ни один незакреплённый оффер не набрал minClicks", () => {
+    const res = rebalanceByPerformance(
+      [makeOffer(1, 50), makeOffer(2, 50)],
+      {
+        1: makeMetric(1, 10, 1.2),
+        2: makeMetric(2, 12, 0.8),
+      },
+      50
+    );
+    expect(res.error).toContain("Нет незакреплённых офферов с кликами");
   });
 });

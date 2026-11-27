@@ -12,14 +12,18 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db, log_operation
 from app.deps import get_keitaro_client
+from app.health_audit import audit_campaign_streams
 from app.keitaro import KeitaroClient, KeitaroError
 from app.keitaro_helpers import build_keitaro_campaign_url, build_tracking_url, extract_rows
 from app.models import StreamOfferSnapshot
 from app.schemas import (
     CampaignCreateRequest,
     CampaignCreateResponse,
+    CampaignHealthSummary,
+    CampaignStatsResponse,
     CampaignStreamsResponse,
     CampaignSummary,
+    OfferStatsItem,
     StreamFilterItem,
     StreamInfo,
     StreamOfferItem,
@@ -318,6 +322,114 @@ async def create_campaign(
     )
 
 
+@router.get("/health", response_model=dict[int, CampaignHealthSummary])
+async def get_campaigns_health(
+    limit: int = Query(default=40, ge=1, le=100),
+    client: KeitaroClient = Depends(get_keitaro_client),
+) -> dict[int, CampaignHealthSummary]:
+    """Проводит аудит здоровья потоков по списку активных кампаний."""
+    try:
+        campaigns_raw, offers_raw = await asyncio.gather(
+            client.list_campaigns(limit=limit, offset=0),
+            client.list_offers(),
+        )
+    except KeitaroError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    offer_catalog: dict[int, dict[str, Any]] = {
+        int(row["id"]): row
+        for row in extract_rows(offers_raw)
+        if row.get("id") is not None
+    }
+    campaigns = [
+        row
+        for row in extract_rows(campaigns_raw)
+        if row.get("id") is not None and row.get("state") != "deleted"
+    ]
+
+    semaphore = asyncio.Semaphore(8)
+
+    async def _audit_one(cid: int) -> tuple[int, CampaignHealthSummary]:
+        async with semaphore:
+            try:
+                streams_raw = await client.list_campaign_streams(cid)
+                return cid, audit_campaign_streams(extract_rows(streams_raw), offer_catalog)
+            except KeitaroError:
+                return cid, CampaignHealthSummary(status="ok", issues=[])
+
+    results = await asyncio.gather(*(_audit_one(int(c["id"])) for c in campaigns))
+    return dict(results)
+
+
+@router.get("/{campaign_id}/stats", response_model=CampaignStatsResponse)
+async def get_campaign_stats(
+    campaign_id: int,
+    period: str = Query(default="7d", pattern="^(today|7d|30d)$"),
+    client: KeitaroClient = Depends(get_keitaro_client),
+) -> CampaignStatsResponse:
+    """Возвращает статистику по офферам кампании из Keitaro (POST /report/build)."""
+    interval_map = {
+        "today": "today",
+        "7d": "7 days ago",
+        "30d": "30 days ago",
+    }
+    report_payload = {
+        "range": {"interval": interval_map[period], "timezone": "UTC"},
+        "grouping": ["offer_id"],
+        "metrics": ["clicks", "conversions", "cr", "epc", "revenue"],
+        "filters": [
+            {"name": "campaign_id", "operator": "EQUALS", "expression": [campaign_id]}
+        ],
+    }
+    try:
+        raw_report = await client.build_report(report_payload)
+    except KeitaroError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    rows = (
+        raw_report.get("rows")
+        if isinstance(raw_report, dict) and isinstance(raw_report.get("rows"), list)
+        else extract_rows(raw_report)
+    )
+    items: list[OfferStatsItem] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw_oid = row.get("offer_id")
+        if raw_oid is None:
+            continue
+        try:
+            oid = int(raw_oid)
+        except (TypeError, ValueError):
+            continue
+        clicks = int(float(row.get("clicks") or 0))
+        conversions = int(float(row.get("conversions") or 0))
+        revenue = round(float(row.get("revenue") or 0.0), 4)
+        cr = (
+            round(float(row["cr"]), 2)
+            if row.get("cr") is not None
+            else (round((conversions / clicks) * 100, 2) if clicks > 0 else 0.0)
+        )
+        epc = (
+            round(float(row["epc"]), 4)
+            if row.get("epc") is not None
+            else (round(revenue / clicks, 4) if clicks > 0 else 0.0)
+        )
+        items.append(
+            OfferStatsItem(
+                offer_id=oid,
+                offer_name=str(row["offer"]) if row.get("offer") is not None else None,
+                clicks=clicks,
+                conversions=conversions,
+                cr=cr,
+                epc=epc,
+                revenue=revenue,
+            )
+        )
+
+    return CampaignStatsResponse(campaign_id=campaign_id, period=period, offers=items)
+
+
 @router.get("/{campaign_id}/streams", response_model=CampaignStreamsResponse)
 async def get_campaign_streams(
     campaign_id: int,
@@ -343,8 +455,11 @@ async def get_campaign_streams(
         if row.get("id") is not None
     }
 
+    raw_stream_rows = extract_rows(streams_raw)
+    health = audit_campaign_streams(raw_stream_rows, offer_catalog)
+
     streams: list[StreamInfo] = []
-    for row in extract_rows(streams_raw):
+    for row in raw_stream_rows:
         if row.get("id") is None:
             continue
         stream_id = int(row["id"])
@@ -442,6 +557,7 @@ async def get_campaign_streams(
     return CampaignStreamsResponse(
         campaign=_to_campaign_summary(campaign_raw, base_url),
         streams=streams,
+        health=health,
     )
 
 

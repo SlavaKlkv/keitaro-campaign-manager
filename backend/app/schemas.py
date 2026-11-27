@@ -162,11 +162,48 @@ class StreamInfo(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class HealthIssue(BaseModel):
+    """Проблема, выявленная аудитом здоровья кампании."""
+
+    code: str
+    severity: str
+    stream_id: int | None = None
+    message: str
+
+
+class CampaignHealthSummary(BaseModel):
+    """Итог аудита здоровья кампании."""
+
+    status: str
+    issues: list[HealthIssue] = Field(default_factory=list)
+
+
 class CampaignStreamsResponse(BaseModel):
-    """Ответ с данными кампании и списком её потоков."""
+    """Ответ с данными кампании, списком её потоков и статусом здоровья."""
 
     campaign: CampaignSummary
     streams: list[StreamInfo]
+    health: CampaignHealthSummary | None = None
+
+
+class OfferStatsItem(BaseModel):
+    """Статистика по одному офферу кампании за выбранный период."""
+
+    offer_id: int
+    offer_name: str | None = None
+    clicks: int = 0
+    conversions: int = 0
+    cr: float = 0.0
+    epc: float = 0.0
+    revenue: float = 0.0
+
+
+class CampaignStatsResponse(BaseModel):
+    """Статистика по офферам кампании за период (today / 7d / 30d)."""
+
+    campaign_id: int
+    period: str
+    offers: list[OfferStatsItem]
 
 
 class StreamOfferShareInput(BaseModel):
