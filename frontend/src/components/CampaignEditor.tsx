@@ -374,8 +374,8 @@ export function CampaignEditor({
       <section className="card">
         <div className="card-head">
           <div>
-            <p className="eyebrow">Часть 2 · Редактор кампании</p>
-            <h1 className="page-title">Управление потоками и долями офферов</h1>
+            <p className="eyebrow">Настройка кампании</p>
+            <h1 className="page-title">Потоки и офферы кампании</h1>
             <p className="muted-copy">
               Изменяйте состав и доли офферов в черновике с мгновенным
               пересчётом до 100%, затем отправляйте изменения через{" "}

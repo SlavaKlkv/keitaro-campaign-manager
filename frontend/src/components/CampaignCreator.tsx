@@ -133,8 +133,8 @@ export function CampaignCreator({
       <section className="card">
         <div className="card-head">
           <div>
-            <p className="eyebrow">Часть 1 · Создаватор кампаний</p>
-            <h1 className="page-title">Новая кампания Keitaro</h1>
+            <p className="eyebrow">Создание кампании</p>
+            <h1 className="page-title">Новая кампания</h1>
             <p className="muted-copy">
               Создаёт кампанию с ротацией «По позиции» и моделью затрат CPC:
               Flow 1 перехватывает выбранное гео и редиректит на{" "}
@@ -373,7 +373,7 @@ export function CampaignCreator({
                 className="btn btn-primary"
                 onClick={() => onOpenInEditor(createdResult.id)}
               >
-                Открыть в редакторе
+                Настроить кампанию
               </button>
             </div>
           </div>

@@ -73,7 +73,7 @@ export function App() {
           <Logo />
           <span className="brand-text">
             <strong>KT Studio</strong>
-            <small>Управление кампаниями и потоками</small>
+            <small>Кампании и потоки Keitaro</small>
           </span>
         </a>
 
@@ -83,14 +83,14 @@ export function App() {
             className={`nav-tab ${tab === "creator" ? "active" : ""}`}
             onClick={() => setTab("creator")}
           >
-            Создаватор
+            Создание
           </button>
           <button
             type="button"
             className={`nav-tab ${tab === "editor" ? "active" : ""}`}
             onClick={() => setTab("editor")}
           >
-            Редактор
+            Управление
           </button>
           <button
             type="button"
