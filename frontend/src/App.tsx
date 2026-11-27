@@ -72,7 +72,7 @@ export function App() {
         <a className="brand" href="/">
           <Logo />
           <span className="brand-text">
-            <strong>Keitaro Campaign Manager</strong>
+            <strong>KT Studio</strong>
             <small>Управление кампаниями и потоками</small>
           </span>
         </a>
