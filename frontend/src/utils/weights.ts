@@ -23,7 +23,6 @@ export function isStreamDraftDirty(
     return (
       item.offer_id !== other.offer_id ||
       item.share !== other.share ||
-      item.pinned !== other.pinned ||
       item.removed !== other.removed
     );
   });
@@ -31,11 +30,14 @@ export function isStreamDraftDirty(
 
 /**
  * Пересчитывает доли офферов в потоке до суммы ровно 100%.
- * Удалённые получают 0%; остаток `100 - sum(pinned)` делится поровну между
- * активными незакреплёнными офферами с распределением остатка +1% сверху вниз.
+ * Удалённые получают 0%; закреплённые (pinned) и опционально редактируемый сейчас
+ * оффер (`fixedOfferId`) сохраняют заданные доли, а остаток `100 - sum(fixed)`
+ * делится поровну между остальными активными незакреплёнными офферами
+ * с распределением остатка +1% сверху вниз.
  */
 export function recalculateDraftShares(
-  items: DraftOffer[]
+  items: DraftOffer[],
+  fixedOfferId?: number
 ): RecalculationResult {
   const active = items.filter((item) => !item.removed);
   if (active.length === 0) {
@@ -50,33 +52,39 @@ export function recalculateDraftShares(
     };
   }
 
-  let pinnedSum = 0;
-  let unpinnedCount = 0;
+  const isFixed = (item: DraftOffer): boolean =>
+    item.pinned || (fixedOfferId !== undefined && item.offer_id === fixedOfferId);
+
+  let fixedSum = 0;
+  let adjustableCount = 0;
   for (const item of active) {
-    if (item.pinned) {
+    if (isFixed(item)) {
       if (!Number.isFinite(item.share) || item.share < 0 || item.share > 100) {
         return {
           offers: items,
-          error: `Доля закреплённого оффера #${item.offer_id} должна быть от 0 до 100%.`,
+          error: `Доля оффера #${item.offer_id} должна быть от 0 до 100%.`,
         };
       }
-      pinnedSum += Math.round(item.share);
+      fixedSum += Math.round(item.share);
     } else {
-      unpinnedCount += 1;
+      adjustableCount += 1;
     }
   }
 
-  if (pinnedSum > 100) {
+  if (fixedSum > 100) {
     return {
       offers: items,
-      error: `Сумма закреплённых долей (${pinnedSum}%) превышает 100%. Уменьшите или открепите доли.`,
+      error: `Сумма заданных долей (${fixedSum}%) превышает 100%. Уменьшите значение или открепите закреплённые доли.`,
     };
   }
 
-  if (unpinnedCount === 0) {
+  if (adjustableCount === 0) {
+    const allPinned = active.every((item) => item.pinned);
     const error =
-      pinnedSum !== 100
-        ? `Все активные офферы закреплены, но сумма их долей равна ${pinnedSum}% вместо 100%.`
+      fixedSum !== 100
+        ? allPinned
+          ? `Все активные офферы закреплены, но сумма их долей равна ${fixedSum}% вместо 100%.`
+          : `Сумма долей активных офферов равна ${fixedSum}% вместо 100%. Измените значение или открепите закреплённые доли.`
         : null;
     return {
       offers: items.map((item) =>
@@ -88,20 +96,20 @@ export function recalculateDraftShares(
     };
   }
 
-  const remaining = 100 - pinnedSum;
-  const baseShare = Math.floor(remaining / unpinnedCount);
-  const remainder = remaining % unpinnedCount;
+  const remaining = 100 - fixedSum;
+  const baseShare = Math.floor(remaining / adjustableCount);
+  const remainder = remaining % adjustableCount;
 
-  let unpinnedIdx = 0;
+  let adjustableIdx = 0;
   const updated = items.map((item) => {
     if (item.removed) {
       return { ...item, share: 0, pinned: false };
     }
-    if (item.pinned) {
+    if (isFixed(item)) {
       return { ...item, share: Math.round(item.share) };
     }
-    const extra = unpinnedIdx < remainder ? 1 : 0;
-    unpinnedIdx += 1;
+    const extra = adjustableIdx < remainder ? 1 : 0;
+    adjustableIdx += 1;
     return { ...item, share: baseShare + extra };
   });
 

@@ -87,6 +87,7 @@ export interface StreamOfferItem {
   name?: string | null;
   share: number;
   state: string;
+  country?: string[];
 }
 
 export interface StreamFilterItem {
@@ -101,6 +102,7 @@ export interface StreamInfo {
   name: string;
   type?: string | null;
   position?: number | null;
+  weight?: number | null;
   schema?: string | null;
   action_type?: string | null;
   action_payload?: string | null;
@@ -110,21 +112,20 @@ export interface StreamInfo {
 }
 
 export interface CampaignStreamsResponse {
-  campaign_id: number;
-  campaign_name?: string | null;
-  keitaro_url: string;
+  campaign: CampaignSummary;
   streams: StreamInfo[];
 }
 
 export interface StreamOfferShareInput {
   offer_id: number;
   share: number;
+  state?: "active" | "disabled";
 }
 
 export interface UpdateStreamOffersResponse {
   campaign_id: number;
   stream_id: number;
-  offers: StreamOfferItem[];
+  offers: StreamOfferShareInput[];
   updated: boolean;
 }
 
