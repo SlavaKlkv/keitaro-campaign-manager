@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import urllib.error
 import urllib.request
 
@@ -271,7 +272,7 @@ def cleanup_campaign(campaign_id: int) -> None:
         print(f"Cleanup warning for #{campaign_id}: HTTP {exc.code}")
 
 
-def convert_webm_to_mp4(webm_path: Path, mp4_path: Path) -> None:
+def convert_webm_to_mp4(webm_path: Path, mp4_path: Path, trim_start: float = 0.0) -> None:
     """Конвертирует запись Playwright WebM в MP4 (H.264, yuv420p, faststart)."""
     mp4_path.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -279,18 +280,24 @@ def convert_webm_to_mp4(webm_path: Path, mp4_path: Path) -> None:
         "-y",
         "-i",
         str(webm_path),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-preset",
-        "medium",
-        "-crf",
-        "22",
-        "-movflags",
-        "+faststart",
-        str(mp4_path),
     ]
+    if trim_start > 0:
+        cmd.extend(["-ss", f"{trim_start:.2f}"])
+    cmd.extend(
+        [
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-preset",
+            "medium",
+            "-crf",
+            "22",
+            "-movflags",
+            "+faststart",
+            str(mp4_path),
+        ]
+    )
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
 
@@ -313,12 +320,15 @@ def main() -> None:
             )
             context.add_init_script(init_cursor_script)
             page = context.new_page()
+            recording_started = time.monotonic()
             rec = Recorder(page)
 
             # 1. Знакомство с темами (тайминги не меняем: 1.0s → 1.0s → 0.6s)
             page.goto(BASE_URL, wait_until="networkidle")
             page.get_by_text("API: ok · БД: ok").wait_for(timeout=15000)
             page.locator('button[type="submit"]:not(:disabled)').wait_for(timeout=20000)
+            page.wait_for_timeout(150)
+            trim_start = max(0.0, time.monotonic() - recording_started)
             rec.pointer(640, 340)
             rec.pause(1.0)
 
@@ -416,7 +426,7 @@ def main() -> None:
             assert video is not None
             webm_path = Path(video.path())
 
-        convert_webm_to_mp4(webm_path, OUTPUT_MP4)
+        convert_webm_to_mp4(webm_path, OUTPUT_MP4, trim_start=trim_start)
         print(f"Saved screencast to {OUTPUT_MP4} ({OUTPUT_MP4.stat().st_size} bytes)")
     finally:
         if created_campaign_id is not None:
