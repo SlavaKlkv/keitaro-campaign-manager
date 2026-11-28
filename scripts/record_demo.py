@@ -10,19 +10,18 @@
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass
 import json
 import math
+from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
-import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
-from pathlib import Path
 
-from playwright.sync_api import Locator, Page, sync_playwright
+from playwright.sync_api import Locator, Page, sync_playwright  # pyright: ignore[reportMissingImports]
 
 ROOT = Path(__file__).resolve().parent.parent
 CURSOR_DIR = ROOT / "docs" / "assets" / "cursor-shapes"
@@ -58,9 +57,7 @@ def cursor_assets() -> dict[str, dict[str, object]]:
     for name, (filename, hot_x, hot_y) in CURSOR_SHAPES.items():
         path = CURSOR_DIR / filename
         if not path.exists():
-            raise SystemExit(
-                f"Нет формы курсора {path}. Положите вырезки в docs/assets/cursor-shapes перед записью."
-            )
+            raise SystemExit(f"Нет формы курсора {path}. Положите вырезки в docs/assets/cursor-shapes перед записью.")
         data = base64.b64encode(path.read_bytes()).decode()
         assets[name] = {
             "src": f"data:image/png;base64,{data}",
