@@ -148,7 +148,7 @@ class Recorder:
         self.page = page
         self.pos = Point(VIEWPORT["width"] * 0.5, VIEWPORT["height"] * 0.5)
 
-    def move_to(self, x: float, y: float, duration: float = 0.28) -> None:
+    def move_to(self, x: float, y: float, duration: float = 0.22) -> None:
         """Подводит курсор с кубическим замедлением у цели (ease-out)."""
         start = self.pos
         steps = max(5, int(duration / 0.022))
@@ -212,8 +212,8 @@ class Recorder:
     def hover(
         self,
         locator: Locator,
-        duration: float = 0.28,
-        settle: float = 0.18,
+        duration: float = 0.22,
+        settle: float = 0.14,
     ) -> Locator:
         """Плавно наводит курсор на элемент и выдерживает форму указателя."""
         self.scroll_to(locator)
@@ -227,9 +227,9 @@ class Recorder:
     def click(
         self,
         locator: Locator,
-        duration: float = 0.28,
-        settle: float = 0.18,
-        pause_after: float = 0.35,
+        duration: float = 0.22,
+        settle: float = 0.14,
+        pause_after: float = 0.25,
     ) -> None:
         """Наводит курсор, выдерживает паузу, нажимает с естественным удержанием 70 мс."""
         self.hover(locator, duration, settle)
@@ -243,12 +243,12 @@ class Recorder:
         self,
         locator: Locator,
         text: str,
-        delay: float = 40,
-        pause_after: float = 0.35,
+        delay: float = 32,
+        pause_after: float = 0.25,
     ) -> None:
         """Ставит каретку кликом, выдерживает паузу и набирает текст посимвольно."""
-        self.click(locator, settle=0.20, pause_after=0.0)
-        self.page.wait_for_timeout(220)
+        self.click(locator, settle=0.14, pause_after=0.0)
+        self.page.wait_for_timeout(140)
         self.page.keyboard.press("ControlOrMeta+a")
         self.page.keyboard.type(text, delay=delay)
         if pause_after > 0:
@@ -336,22 +336,22 @@ def main() -> None:
             rec.click(page.locator('button[aria-label="Системная тема"]'), pause_after=0.6)
 
             # 2. Создание кампаний: имя, переключение Geo ES (по умолчанию) → AU, оффер
-            rec.type_text(page.locator("#cmp-name"), "test_kulikov_demo_au", delay=40)
+            rec.type_text(page.locator("#cmp-name"), "test_kulikov_demo_au", delay=32)
             rec.click(
                 page.locator(".geo-chips button", has_text="AU"),
-                settle=0.22,
-                pause_after=0.5,
+                settle=0.14,
+                pause_after=0.3,
             )
 
-            rec.type_text(page.locator("#cmp-offer"), "18001", delay=48, pause_after=0.45)
+            rec.type_text(page.locator("#cmp-offer"), "18001", delay=36, pause_after=0.3)
             first_offer = page.locator(".autocomplete-list .autocomplete-item").first
             first_offer.wait_for(timeout=10000)
-            rec.click(first_offer, pause_after=0.6)
+            rec.click(first_offer, pause_after=0.35)
 
             rec.click(
                 page.get_by_role("button", name="Create campaign"),
-                settle=0.25,
-                pause_after=0.2,
+                settle=0.16,
+                pause_after=0.15,
             )
 
             result_heading = page.locator(".result-card h2")
@@ -359,66 +359,66 @@ def main() -> None:
             match = re.search(r"#(\d+)", result_heading.inner_text())
             if match:
                 created_campaign_id = int(match.group(1))
-            rec.pause(1.5)
+            rec.pause(0.9)
 
             rec.click(
                 page.get_by_role("button", name="Настроить кампанию"),
-                settle=0.24,
-                pause_after=0.5,
+                settle=0.16,
+                pause_after=0.3,
             )
 
             # 3. Редактор кампании: ждём загрузки потоков (Flow 1 + Flow 2)
             page.get_by_text("Stream: Офферы").wait_for(timeout=20000)
-            rec.pause(1.2)
+            rec.pause(0.7)
 
             # Добавляем 2 оффера (100% → 50/50 → 34/33/33) со спокойными паузами
             add_input = page.locator('input[aria-label="Поиск оффера для добавления в поток"]')
             add_btn = page.get_by_role("button", name="ADD", exact=True)
             for offer_code in ("18002", "18003"):
-                rec.type_text(add_input, offer_code, delay=40, pause_after=0.3)
+                rec.type_text(add_input, offer_code, delay=32, pause_after=0.25)
                 item = page.locator(".autocomplete-list .autocomplete-item").first
                 item.wait_for(timeout=5000)
-                rec.click(item, settle=0.18, pause_after=0.25)
-                rec.click(add_btn, settle=0.18, pause_after=0.8)
+                rec.click(item, settle=0.14, pause_after=0.2)
+                rec.click(add_btn, settle=0.14, pause_after=0.45)
 
             # Ввод Share 25% + явный клик по Pin → пересчёт 38% / 37% / 25%
             share_inputs = page.locator("input.share-input:not(:disabled)")
-            rec.type_text(share_inputs.nth(2), "25", delay=55, pause_after=0.55)
+            rec.type_text(share_inputs.nth(2), "25", delay=40, pause_after=0.35)
             rec.click(
                 page.locator("button.pin-btn:not(:disabled)").nth(2),
-                settle=0.22,
-                pause_after=1.2,
+                settle=0.14,
+                pause_after=0.7,
             )
 
             # PUSH TO KT (38% / 37% / 25%) и пауза на результате
             rec.click(
                 page.get_by_role("button", name="PUSH TO KT"),
-                settle=0.25,
-                pause_after=0.2,
+                settle=0.16,
+                pause_after=0.15,
             )
             page.get_by_text("Изменения сохранены в Keitaro").wait_for(timeout=20000)
-            rec.pause(1.3)
+            rec.pause(0.8)
 
             # REMOVE (0% / removed / BRING BACK) и откат через CANCEL
             rec.click(
                 page.get_by_role("button", name="REMOVE", exact=True).nth(2),
-                settle=0.20,
-                pause_after=1.1,
+                settle=0.14,
+                pause_after=0.7,
             )
             rec.click(
                 page.get_by_role("button", name="CANCEL", exact=True),
-                settle=0.24,
-                pause_after=1.0,
+                settle=0.16,
+                pause_after=0.6,
             )
 
             # 4. Переключение на вкладку Журнал операций
             rec.click(
                 page.locator("nav.nav-tabs button", has_text="Журнал"),
-                settle=0.24,
-                pause_after=0.35,
+                settle=0.16,
+                pause_after=0.25,
             )
             page.locator(".data-table tbody tr").first.wait_for(timeout=10000)
-            rec.pause(1.8)
+            rec.pause(1.0)
 
             video = page.video
             context.close()

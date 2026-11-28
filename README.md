@@ -18,7 +18,7 @@
 
 ## Демо
 
-https://github.com/user-attachments/assets/dd3ae24f-67e3-489e-a4a1-aad7956017eb
+https://github.com/user-attachments/assets/28509b74-cdaa-4006-b8bb-3fa3543daeb2
 
 *Переключение тем (тёмная → светлая → системная) → создание кампании (`Geo` `ES` → `AU`, автокомплит `Offer`) → переход в управление потоками (`Настроить кампанию`) → добавление офферов (`ADD`) → ввод `Share` и закрепление `Pin` с пересчётом `38% / 37% / 25%` → отправка в трекер (`PUSH TO KT`) → удаление и откат черновика (`REMOVE` → `CANCEL`) → журнал операций в PostgreSQL.*
 
